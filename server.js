@@ -3,8 +3,8 @@ const { MongoClient } = require("mongodb");
 const dotenv = require("dotenv");
 const cors = require("cors");
 const bodyParser = require("body-parser");
-const axios = require("axios");
 const Joi = require("joi");
+const Anthropic = require("@anthropic-ai/sdk");
 
 dotenv.config();
 
@@ -12,8 +12,12 @@ const app = express();
 const port = process.env.PORT || 3000;
 const mongoUri = process.env.MONGO_URI;
 const mongoDbName = process.env.MONGO_DB_NAME || "job_management";
-const claudeApiKey = process.env.CLAUDE_API_KEY;
-const claudeModel = process.env.CLAUDE_MODEL || "claude-3-5-sonnet-latest";
+const claudeApiKey = (process.env.CLAUDE_API_KEY || "").trim();
+const claudeModel = process.env.CLAUDE_MODEL || "claude-3-haiku-20240307";
+
+const anthropic = new Anthropic({
+  apiKey: claudeApiKey,
+});
 const allowedCollections = [
   "jobs",
   "clients",
@@ -109,40 +113,22 @@ function hasAny(text, keywords) {
 }
 
 async function callClaude(prompt) {
-  const apiKey = (process.env.CLAUDE_API_KEY || "").trim();
-  if (!apiKey) {
+  if (!claudeApiKey) {
     throw new Error("CLAUDE_API_KEY is missing in .env");
   }
 
-  const activeModel = process.env.CLAUDE_MODEL || "claude-3-haiku-20240307";
-
   try {
-    const response = await axios.post(
-      "https://api.anthropic.com/v1/messages",
-      {
-        model: activeModel,
-        max_tokens: 1000,
-        messages: [
-          {
-            role: "user",
-            content: prompt
-          }
-        ]
-      },
-      {
-        headers: {
-          "x-api-key": apiKey,
-          "anthropic-version": "2023-06-01",
-          "content-type": "application/json"
-        },
-        timeout: 30000
-      }
-    );
+    const msg = await anthropic.messages.create({
+      model: claudeModel,
+      max_tokens: 1024,
+      messages: [{ role: "user", content: prompt }],
+    });
 
-    return response.data?.content?.[0]?.text || "";
+    return msg.content[0].text || "";
   } catch (error) {
-    if (error.response) {
-      console.error("Claude API Error Body:", JSON.stringify(error.response.data, null, 2));
+    console.error("Anthropic SDK Error:", error.message);
+    if (error.status === 404) {
+      console.warn("Model not found. Please verify model name and account permissions.");
     }
     throw error;
   }
