@@ -1,0 +1,24 @@
+{
+  "_id": {
+    "$oid": "635283b7656d4b1f60cf6a9b"
+  },
+  "client_name": "paytm",
+  "company_website": "https://paytm.com/",
+  "linkedin_id": "https://www.linkedin.com/company/paytm/",
+  "industry": [
+    {
+      "_id": {
+        "$oid": "6316e0a00e767f53cabdd9bd"
+      },
+      "data": "Finance & Investment banking"
+    }
+  ],
+  "location": "Noida, Uttar Pradesh, India",
+  "isDelete": false,
+  "createdAt": {
+    "$date": "2022-10-21T11:34:15.780Z"
+  },
+  "updatedAt": {
+    "$date": "2023-08-18T13:30:45.177Z"
+  }
+}

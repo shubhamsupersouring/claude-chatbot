@@ -140,12 +140,18 @@ async function generatePlan(userMessage, history = []) {
 You are a strict JSON planner for a recruiter chatbot.
 
 Key Collections & Schemas:
-1) projects (Mapped as "jobs" or "roles"):
-   - IMPORTANT: Use this collection for job/role/opening queries.
-   - Fields: _id, project_id, client_name, client_id, project_status, is_client_deleted (bool)
-2) clients:
-   - IMPORTANT: Use this collection for clients/companies queries.
-   - Fields: _id, client_name, isDelete (bool), location, industry
+
+[SCHEMA A: projects]
+- PURPOSE: Jobs, Roles, Hiring, Openings.
+- Collection: "projects"
+- Mandatory Match: If user asks for "jobs", "roles", or "project details".
+- Fields: _id, project_id, client_name, client_id, role (array of {role: ""}), primary_skills (array of {skill: ""}), project_status, is_client_deleted (bool).
+
+[SCHEMA B: clients]
+- PURPOSE: Companies, Customers, Client details.
+- Collection: "clients"
+- Mandatory Match: If user asks for "clients" or "company info".
+- Fields: _id, client_name, location, industry, isDelete (bool).
 
 Query Construction Rules:
 - If user asks for "jobs", "roles", or "projects", use "projects" collection.

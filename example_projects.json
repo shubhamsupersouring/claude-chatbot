@@ -1,0 +1,102 @@
+{
+  "_id": {
+    "$oid": "69e76657eed97633e432d139"
+  },
+  "client_name": "simple mdg",
+  "is_show_client": false,
+  "client_id": {
+    "$oid": "69e21663eed97633e43213b5"
+  },
+  "client_poc": [
+    {
+      "_id": {
+        "$oid": "69e216c3de34883a09901321"
+      },
+      "email": "fernando.paul@simplemdg.com",
+      "mobile_number": "+61435037423",
+      "client_poc": "Fernando Paul",
+      "designation": "Head of APAC"
+    }
+  ],
+  "role": [
+    {
+      "_id": {
+        "$oid": "64660e392b5f2609ca075933"
+      },
+      "role": "Software development engineer (SDE)"
+    }
+  ],
+  "experience_range": [
+    {
+      "_id": {
+        "$oid": "630dd93361108404f9b18f68"
+      },
+      "data": "3-5"
+    }
+  ],
+  "max_experience": 5,
+  "min_experience": 3,
+  "client_price": 300000,
+  "min_ss_price": 140000,
+  "ss_price": 150000,
+  "is_show_ss_price": false,
+  "month_of_engagement": [
+    {
+      "_id": {
+        "$oid": "6310439361108404f9b18fcb"
+      },
+      "data": "6 Months"
+    }
+  ],
+  "hiring_type": [
+    {
+      "_id": {
+        "$oid": "66460e56ed0a6bc4b03339c6"
+      },
+      "data": "Contractual"
+    }
+  ],
+  "no_requirements": 4,
+  "tentative_start": [
+    {
+      "_id": {
+        "$oid": "63105fe261108404f9b18fe6"
+      },
+      "data": "Immediate"
+    }
+  ],
+  "expectations": "Shift Timings - Node.js SAP CAP",
+  "secondary_skills": [
+    {
+      "_id": {
+        "$oid": "631ee0f7f354aa036d5c1b18"
+      },
+      "skill": "AWS"
+    }
+  ],
+  "primary_skills": [
+    {
+      "_id": {
+        "$oid": "631ee0f7f354aa036d5c1b07"
+      },
+      "skill": "Node.js",
+      "competency": [
+        {
+          "_id": {
+            "$oid": "6310604d61108404f9b18fec"
+          },
+          "data": "Expert"
+        }
+      ]
+    }
+  ],
+  "is_client_deleted": false,
+  "project_status": "draft",
+  "project_id": "SIM0003026",
+  "createdAt": {
+    "$date": "2026-04-21T11:58:15.098Z"
+  },
+  "updatedAt": {
+    "$date": "2026-04-21T11:58:34.989Z"
+  }
+}
