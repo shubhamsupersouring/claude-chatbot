@@ -155,6 +155,9 @@ You are the "Supersourcing AI Recruitment Brain". Your task is to convert recrui
 4. User: "Jo deleted na ho?" (Contextual)
    JSON: {"action": "query", "filter": {"is_client_deleted": false}, "projection": {"client_name":1, "role":1, "project_id":1, "ss_price":1}, "limit": 10}
 
+5. User: "Clients who have more than 2 projects"
+   JSON: {"action": "aggregate", "type": "clientsByProjectCount", "minProjects": 2, "limit": 10}
+
 ### DEEP SCHEMA GROUNDING
 [COLLECTION: projects] -> Use for "jobs", "roles", "projects", "openings".
 - Fields: project_id (ID), client_name (Company), role (Array: {role: "Title"}), primary_skills (Array: {skill: "Name"}), is_client_deleted (Bool: Deletion flag), createdAt (Date).
@@ -171,7 +174,8 @@ You are the "Supersourcing AI Recruitment Brain". Your task is to convert recrui
 JSON format:
 {
   "action": "query" | "aggregate" | "count" | "reply",
-  "type": "topClientsByJobs" | null,
+  "type": "topClientsByJobs" | "clientsByProjectCount" | null,
+  "minProjects": number | null, // Use with aggregate action to filter by job count
   "collection": "projects" | "clients",
   "filter": {},
   "projection": {}, // Leave empty or use {} to fetch all relevant fields
@@ -353,32 +357,39 @@ async function runCount(plan) {
 }
 
 async function runAggregation(plan) {
-  if (plan.type === "topClientsByJobs") {
-    const limit = Math.min(Math.max(Number(plan.limit) || 5, 1), 20);
-    return db
-      .collection("projects")
-      .aggregate([
-        {
-          $group: {
-            _id: "$client_id",
-            totalJobs: { $sum: 1 },
-            clientName: { $first: "$client_name" }
-          }
-        },
-        { $sort: { totalJobs: -1 } },
-        { $limit: limit },
-        {
-          $project: {
-            clientId: "$_id",
-            totalJobs: 1,
-            clientName: { $ifNull: ["$clientName", "Unknown Client"] }
-          }
+  if (plan.type === "topClientsByJobs" || plan.type === "clientsByProjectCount") {
+    const limit = Math.min(Math.max(Number(plan.limit) || 10, 1), 50);
+    const minProjects = Number(plan.minProjects) || 0;
+
+    const pipeline = [
+      {
+        $group: {
+          _id: "$client_id",
+          totalJobs: { $sum: 1 },
+          clientName: { $first: "$client_name" }
         }
-      ])
-      .toArray();
+      }
+    ];
+
+    // Add filter for minimum projects if requested
+    if (minProjects > 0) {
+      pipeline.push({ $match: { totalJobs: { $gt: minProjects } } });
+    }
+
+    pipeline.push({ $sort: { totalJobs: -1 } });
+    pipeline.push({ $limit: limit });
+    pipeline.push({
+      $project: {
+        clientId: "$_id",
+        totalJobs: 1,
+        clientName: { $ifNull: ["$clientName", "Unknown Client"] }
+      }
+    });
+
+    return db.collection("projects").aggregate(pipeline).toArray();
   }
 
-  throw new Error("Unsupported aggregation plan");
+  throw new Error(`Unsupported aggregation plan type: ${plan.type}`);
 }
 
 function formatDataResponse(collection, rows) {
@@ -413,12 +424,13 @@ function formatDataResponse(collection, rows) {
 
 function formatAggregationResponse(plan, rows) {
   if (!rows.length) {
-    return "Aggregation data nahi mila.";
+    return "Mausam toh accha hai, par is criteria ke liye koi clients nahi mile.";
   }
 
-  if (plan.type === "topClientsByJobs") {
-    return rows
-      .map((item, index) => `${index + 1}. ${item.clientName} -> ${item.totalJobs} jobs`)
+  if (plan.type === "topClientsByJobs" || plan.type === "clientsByProjectCount") {
+    const minStr = plan.minProjects ? ` (more than ${plan.minProjects} projects)` : "";
+    return `**Found ${rows.length} Clients${minStr}:**\n` + rows
+      .map((item, index) => `${index + 1}. **${item.clientName}** -> ${item.totalJobs} jobs`)
       .join("\n");
   }
 
