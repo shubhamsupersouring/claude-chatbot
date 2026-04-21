@@ -13,7 +13,7 @@ const port = process.env.PORT || 3000;
 const mongoUri = process.env.MONGO_URI;
 const mongoDbName = process.env.MONGO_DB_NAME || "job_management";
 const claudeApiKey = (process.env.CLAUDE_API_KEY || "").trim();
-const claudeModel = process.env.CLAUDE_MODEL || "claude-3-haiku-20240307";
+const claudeModel = process.env.CLAUDE_MODEL || "claude-haiku-4-5-20251001";
 
 const anthropic = new Anthropic({
   apiKey: claudeApiKey,
