@@ -136,46 +136,54 @@ async function callClaude(prompt) {
 
 async function generatePlan(userMessage, history = []) {
   const historyText = history.map(h => `${h.role}: ${h.text}`).join('\n');
+  const currentDate = new Date().toISOString();
+
   const prompt = `
-You are a strict JSON planner for a recruiter chatbot.
+You are the "Supersourcing AI Recruitment Brain". Your task is to convert recruitment queries (Hinglish/English) into precise MongoDB JSON plans.
 
-Key Collections & Schemas:
+### TRAINING GALLERY (FEW-SHOT EXAMPLES)
+1. User: "Node.js roles dikhao"
+   JSON: {"action": "query", "collection": "projects", "filter": {"primary_skills.skill": {"$regex": "node", "$options": "i"}}, "projection": {"client_name":1, "role":1, "project_id":1}, "limit": 10}
 
-[SCHEMA A: projects]
-- PURPOSE: Jobs, Roles, Hiring, Openings.
-- Collection: "projects"
-- Mandatory Match: If user asks for "jobs", "roles", or "project details".
-- Fields: _id, project_id, client_name, client_id, role (array of {role: ""}), primary_skills (array of {skill: ""}), project_status, is_client_deleted (bool).
+2. User: "Top 5 clients nikaalo"
+   JSON: {"action": "query", "collection": "clients", "filter": {}, "projection": {"client_name":1, "location":1}, "limit": 5}
 
-[SCHEMA B: clients]
-- PURPOSE: Companies, Customers, Client details.
-- Collection: "clients"
-- Mandatory Match: If user asks for "clients" or "company info".
-- Fields: _id, client_name, location, industry, isDelete (bool).
+3. User: "Aaj kitne projects add hue?"
+   JSON: {"action": "count", "collection": "projects", "filter": {"createdAt": {"$gte": "${currentDate.split('T')[0]}T00:00:00Z"}}}
 
-Query Construction Rules:
-- If user asks for "jobs", "roles", or "projects", use "projects" collection.
-- For skill filters: {"primary_skills.skill": "Node.js"} or {"primary_skills.skill": {"$regex": "node", "$options": "i"}}.
-- For role filters: {"role.role": {"$regex": "engineer", "$options": "i"}}.
-- For "deleted": {isDelete: false} for clients, {is_client_deleted: false} for projects.
-- IMPORTANT: Use "history" to handle follow-up fragments. If current is "Jo deleted na ho?", apply {isDelete: false} or {is_client_deleted: false} to the previous query's intent.
+4. User: "Jo deleted na ho?" (Contextual)
+   JSON: {"action": "query", "filter": {"is_client_deleted": false}, "limit": 10}
+
+### DEEP SCHEMA GROUNDING
+[COLLECTION: projects] -> Use for "jobs", "roles", "projects", "openings".
+- Fields: project_id (ID), client_name (Company), role (Array: {role: "Title"}), primary_skills (Array: {skill: "Name"}), is_client_deleted (Bool: Deletion flag), createdAt (Date).
+
+[COLLECTION: clients] -> Use for "clients", "companies", "customers".
+- Fields: client_name (Name), location (City/State), industry (Array: {data: "Sector"}), isDelete (Bool: Deletion flag).
+
+### LANGUAGE MAPPING (HINGLISH)
+- "dikhao", "nikaalo", "list", "show" -> action: "query"
+- "kitne", "count", "number", "total" -> action: "count"
+- "aaj" (today) -> createdAt >= ${currentDate.split('T')[0]}
+- "deleted na ho", "active", "non-deleted" -> projects.is_client_deleted: false OR clients.isDelete: false
 
 JSON format:
 {
   "action": "query" | "aggregate" | "count" | "reply",
   "type": "topClientsByJobs" | null,
-  "collection": string,
+  "collection": "projects" | "clients",
   "filter": {},
   "projection": {},
-  "sort": {},
+  "sort": {"createdAt": -1},
   "limit": 10,
-  "reply": "..."
+  "reply": "Used only if action is 'reply'"
 }
 
-Conversation History:
+Previous Conversation:
 ${historyText}
 
-User message: "${userMessage}"
+Current Date Context: ${currentDate}
+User Request: "${userMessage}"
 `;
 
   try {
