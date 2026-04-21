@@ -89,7 +89,8 @@ function sanitizeObject(value) {
     const result = {};
     for (const [key, nestedValue] of Object.entries(value)) {
       // Block mongo operators like $where, $expr etc.
-      if (key.startsWith("$")) {
+      const allowedOperators = ["$regex", "$options", "$gte", "$lte", "$ne", "$in", "$nin"];
+      if (key.startsWith("$") && !allowedOperators.includes(key)) {
         continue;
       }
       result[key] = sanitizeObject(nestedValue);
@@ -342,11 +343,13 @@ async function runSafeQuery(plan) {
     .toArray();
 }
 
-async function runCount(collection) {
+async function runCount(plan) {
+  const collection = plan.collection;
   if (!allowedCollections.includes(collection)) {
     throw new Error("Invalid collection requested");
   }
-  return db.collection(collection).countDocuments({});
+  const safeFilter = sanitizeObject(plan.filter || {});
+  return db.collection(collection).countDocuments(safeFilter);
 }
 
 async function runAggregation(plan) {
@@ -442,11 +445,12 @@ app.post("/chat", async (req, res) => {
     }
 
     if (plan.action === "count") {
-      const total = await runCount(plan.collection);
+      const total = await runCount(plan);
+      const prefix = plan.filter && Object.keys(plan.filter).length > 0 ? "Result: " : "Total ";
       if (plan.collection === "clients") {
-        return res.json({ reply: `Humare paas total ${total} clients hain.` });
+        return res.json({ reply: `${prefix}${total} clients hain.` });
       }
-      return res.json({ reply: `Total ${total} jobs available hain.` });
+      return res.json({ reply: `${prefix}${total} jobs hain.` });
     }
 
     if (plan.action === "aggregate") {
