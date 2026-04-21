@@ -198,51 +198,71 @@ User message: "${userMessage}"
 
 function generateDeterministicPlan(userMessage) {
   const text = normalizeText(userMessage);
-  
-  // If message contains complex filters that REALLY need Claude, skip.
-  const complexKeywords = ["deleted", "skill", "role", "node", "java", "react", "python", "php", "aws", "remote", "shift", "experience", "na ho", "nai", "sirf"];
-  if (hasAny(text, complexKeywords)) {
-    return null;
-  }
 
   const asksCount = hasAny(text, ["kitne", "count", "total", "how many", "kitna", "number of"]);
   const asksClients = hasAny(text, ["client", "clients", "customer", "customers", "company"]);
   const asksJobs = hasAny(text, ["job", "jobs", "opening", "openings", "vacancy", "vacancies", "project", "projects"]);
   const asksList = hasAny(text, ["list", "dikhao", "dekho", "show", "batao", "nikaalo", "display", "kaunse", "kisne", "kaun"]);
   const asksToday = hasAny(text, ["today", "aaj", "abhee", "now", "recent", "latest"]);
+  const asksNonDeleted = hasAny(text, ["non deleted", "active", "not deleted", "undeleted", "saaf", "bin deleted"]);
+  const asksTop = hasAny(text, ["top", "sabse", "ranking", "best"]);
 
-  // Build filter for Today if needed
+  // Build filter
   const filter = {};
   if (asksToday) {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     filter.createdAt = { "$gte": today };
   }
+  if (asksNonDeleted) {
+    // For clients it's isDelete: false, for projects it's project_status !== 'deleted'
+    // This is a bit ambiguous in deterministic, so we check collection context later
+  }
+
+  // Handle Aggregation: "top 5 clients by jobs"
+  if (asksTop && asksClients && (asksJobs || text.includes("job"))) {
+    const limitMatch = text.match(/\d+/);
+    return {
+      action: "aggregate",
+      type: "topClientsByJobs",
+      limit: limitMatch ? parseInt(limitMatch[0]) : 5
+    };
+  }
 
   // Handle Counts
   if (asksCount) {
-    if (asksClients) return { action: "count", collection: "clients", filter };
-    if (asksJobs) return { action: "count", collection: "projects", filter };
+    const countFilter = { ...filter };
+    if (asksClients) {
+      if (asksNonDeleted) countFilter.isDelete = false;
+      return { action: "count", collection: "clients", filter: countFilter };
+    }
+    if (asksJobs) {
+      if (asksNonDeleted) countFilter.is_client_deleted = false;
+      return { action: "count", collection: "projects", filter: countFilter };
+    }
   }
 
   // Handle Lists/Queries
-  if (asksList || asksToday) {
+  if (asksList || asksToday || asksNonDeleted) {
     if (asksJobs || (asksClients && asksToday)) { 
-      // "Who posted jobs today?" -> projects collection
+      const queryFilter = { ...filter };
+      if (asksNonDeleted) queryFilter.is_client_deleted = false;
       return { 
         action: "query", 
         collection: "projects", 
-        filter, 
+        filter: queryFilter, 
         projection: { client_name: 1, role: 1, project_id: 1, createdAt: 1 }, 
         limit: 10 
       };
     }
     if (asksClients) {
+      const queryFilter = { ...filter };
+      if (asksNonDeleted) queryFilter.isDelete = false;
       return { 
         action: "query", 
         collection: "clients", 
-        filter, 
-        projection: { client_name: 1, location: 1 }, 
+        filter: queryFilter, 
+        projection: { client_name: 1, name: 1, location: 1 }, 
         limit: 10 
       };
     }
