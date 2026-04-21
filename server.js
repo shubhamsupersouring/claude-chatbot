@@ -434,42 +434,43 @@ User asked: "${userQuery}"
 I found these results in the "${collection}" collection:
 ${JSON.stringify(rows, null, 2)}
 
-Please summarize these results using the following **GOLD STANDARD** format:
+Please summarize these results using the following CLEAN PROFESSIONAL format (No Emojis in headers):
 
-# 🎯 [Company Name] - Search Results
-(Friendly Hinglish greeting mentioning the number of results found)
+# [Company Name] - Search Results
+(Friendly professional greeting mentioning the number of results found)
 
 ---
 
-## 📌 [Role Name] - Highlighted Position
+## [Role Name] - Featured Position
 | Job Details | Information |
 |---|---|
-| **Role** | [Role Name] |
-| **Company** | [Company Name] |
-| **Project ID** | [ID] |
-| **Budget/Price** | [₹ Amount] |
-| **Location** | [Location or "Remote"] |
+| Role | [Role Name] |
+| Company | [Company Name] |
+| Project ID | [ID] |
+| Budget/Price | [₹ Amount] |
+| Posted On | [Date] |
+| Location | [Location or "Remote"] |
 
 ---
 
-## 💡 Key Highlights:
+## Key Highlights
 - **Skill Requirements**: (List 2-3 key skills)
 - **Status/Budget**: (Brief note on budget or project status)
-- **Pro Tip**: (Small advice for the recruiter)
+- **Pro Tip**: (Strategic recruitment advice)
 
-## 📢 Similar/Other Opportunities:
-(List 1-2 other relevant roles or companies found in the data)
+## Similar/Other Opportunities
+(List other relevant roles or companies found in the data, including Project IDs and Prices)
 
-## ❓ Next Steps:
-1. (Specific follow-up question 1)
-2. (Specific follow-up question 2)
+## Next Steps
+1. (Targeted question about candidate experience/stack)
+2. (Proposed action for applying/forwarding candidates)
 
 ### MANDATORY STYLE RULES:
-1. Use **Tables** for primary data points.
-2. Use **Horizontal Rules** (---) to separate sections.
-3. Use **Emojis** (🎯, 📌, 💡, 📢, ❓) for headers.
-4. Language: Professional **Hinglish** (Hindi/English mix).
-5. If no data found, politely say "Data nahi mila" but suggest alternatives.
+1. NO EMOJIS in headers (🎯, 📌, etc. are forbidden).
+2. Use professional clean Markdown tables for all primary job data.
+3. Use horizontal rules (---) between major sections.
+4. Language: Professional Hinglish (clean Hindi/English mix).
+5. If data is not found, offer a polite alternative or suggestion.
 `;
 
   try {
