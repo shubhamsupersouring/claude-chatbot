@@ -114,7 +114,7 @@ async function callClaude(prompt) {
     throw new Error("CLAUDE_API_KEY is missing in .env");
   }
 
-  const activeModel = process.env.CLAUDE_MODEL || "claude-3-5-sonnet-latest";
+  const activeModel = process.env.CLAUDE_MODEL || "claude-3-haiku-20240307";
 
   try {
     const response = await axios.post(
@@ -155,9 +155,11 @@ You are a strict JSON planner for a recruiter chatbot.
 
 Key Collections & Schemas:
 1) projects (Mapped as "jobs" or "roles"):
-   - Fields: _id, project_id, client_name, client_id, project_status (e.g. "draft", "assigned"), status, is_client_deleted (bool), role (array of {role: ""}), primary_skills (array of {skill: "", competency: [{data: ""}]})
+   - IMPORTANT: Use this collection for job/role/opening queries.
+   - Fields: _id, project_id, client_name, client_id, project_status, is_client_deleted (bool)
 2) clients:
-   - Fields: _id, client_name, company_website, isDelete (bool), location, status
+   - IMPORTANT: Use this collection for clients/companies queries.
+   - Fields: _id, client_name, isDelete (bool), location, industry
 
 Query Construction Rules:
 - If user asks for "jobs", "roles", or "projects", use "projects" collection.
@@ -192,6 +194,36 @@ User message: "${userMessage}"
     return JSON.parse(parsedText);
   } catch (error) {
     console.error("GeneratePlan Error:", error.message);
+    
+    // --- Smart Fallback for Recruitment Queries (Claude Alternative) ---
+    const text = normalizeText(userMessage);
+    const asksJobs = hasAny(text, ["job", "jobs", "role", "role", "project", "projects", "opening"]);
+    const asksClients = hasAny(text, ["client", "clients", "company", "companies"]);
+    const asksCount = hasAny(text, ["kitne", "count", "total", "number"]);
+    
+    if (asksJobs || asksClients) {
+      const plan = {
+        action: asksCount ? "count" : "query",
+        collection: asksJobs ? "projects" : "clients",
+        filter: {},
+        projection: asksJobs ? { client_name: 1, role: 1, project_id: 1 } : { client_name: 1, name: 1, location: 1 },
+        limit: 10
+      };
+
+      // Handle Skill filters
+      if (text.includes("node")) plan.filter = { "primary_skills.skill": { "$regex": "node", "$options": "i" } };
+      if (text.includes("react")) plan.filter = { "primary_skills.skill": { "$regex": "react", "$options": "i" } };
+      
+      // Handle Deletion filters
+      if (text.includes("deleted na ہو") || text.includes("non deleted") || text.includes("not deleted") || text.includes("undeleted")) {
+        if (asksJobs) plan.filter.is_client_deleted = false;
+        if (asksClients) plan.filter.isDelete = false;
+      }
+
+      console.log("Using Smart Fallback Plan:", JSON.stringify(plan));
+      return plan;
+    }
+    
     return null;
   }
 }
@@ -352,7 +384,7 @@ function formatDataResponse(collection, rows) {
   }
 
   if (collection === "projects" || collection === "jobs") {
-    return rows
+    return `**Collection: projects**\n` + rows
       .map((item, index) => {
         const role = item.role && item.role[0] ? item.role[0].role : (item.title || "Untitled Role");
         const client = item.client_name || "Unknown Client";
@@ -363,7 +395,7 @@ function formatDataResponse(collection, rows) {
   }
 
   if (collection === "clients") {
-    return rows
+    return `**Collection: clients**\n` + rows
       .map((item, index) => {
         const name = item.client_name || item.name || "Unknown Client";
         const location = item.location || "N/A";

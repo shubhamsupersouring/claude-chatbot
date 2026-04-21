@@ -1,0 +1,460 @@
+[
+  {
+    "_id": {
+      "$oid": "69e76657eed97633e432d139"
+    },
+    "client_name": "simple mdg",
+    "is_show_client": false,
+    "client_id": {
+      "$oid": "69e21663eed97633e43213b5"
+    },
+    "client_poc": [
+      {
+        "_id": {
+          "$oid": "69e216c3de34883a09901321"
+        },
+        "email": "fernando.paul@simplemdg.com",
+        "mobile_number": "+61435037423",
+        "client_poc": "Fernando Paul",
+        "designation": "Head of APAC"
+      }
+    ],
+    "role": [
+      {
+        "_id": {
+          "$oid": "64660e392b5f2609ca075933"
+        },
+        "role": "Software development engineer (SDE)"
+      }
+    ],
+    "experience_range": [
+      {
+        "_id": {
+          "$oid": "630dd93361108404f9b18f68"
+        },
+        "data": "3-5"
+      }
+    ],
+    "max_experience": 5,
+    "min_experience": 3,
+    "client_price": 300000,
+    "min_ss_price": 140000,
+    "ss_price": 150000,
+    "is_show_ss_price": false,
+    "month_of_engagement": [
+      {
+        "_id": {
+          "$oid": "6310439361108404f9b18fcb"
+        },
+        "data": "6 Months"
+      }
+    ],
+    "hiring_type": [
+      {
+        "_id": {
+          "$oid": "66460e56ed0a6bc4b03339c6"
+        },
+        "data": "Contractual"
+      }
+    ],
+    "no_requirements": 4,
+    "tentative_start": [
+      {
+        "_id": {
+          "$oid": "63105fe261108404f9b18fe6"
+        },
+        "data": "Immediate"
+      }
+    ],
+    "expectations": "Shift Timings - Node.js SAP CAP",
+    "secondary_skills": [
+      {
+        "_id": {
+          "$oid": "631ee0f7f354aa036d5c1b18"
+        },
+        "skill": "AWS"
+      },
+      {
+        "_id": {
+          "$oid": "631ee0f7f354aa036d5c1dd9"
+        },
+        "skill": "GCP"
+      },
+      {
+        "_id": {
+          "$oid": "631ee0f7f354aa036d5c1da4"
+        },
+        "skill": "Microsoft Azure"
+      },
+      {
+        "_id": {
+          "$oid": "631ee0f7f354aa036d5c216d"
+        },
+        "skill": "Nest.js"
+      },
+      {
+        "_id": {
+          "$oid": "631ee0f7f354aa036d5c1b04"
+        },
+        "skill": "Typescript"
+      }
+    ],
+    "primary_skills": [
+      {
+        "_id": {
+          "$oid": "631ee0f7f354aa036d5c1b07"
+        },
+        "skill": "Node.js",
+        "competency": [
+          {
+            "_id": {
+              "$oid": "6310604d61108404f9b18fec"
+            },
+            "data": "Expert"
+          }
+        ]
+      },
+      {
+        "_id": {
+          "$oid": "631ee0f7f354aa036d5c1b03"
+        },
+        "skill": "JavaScript",
+        "competency": [
+          {
+            "$oid": "6310604d61108404f9b18fec"
+          },
+          "data": "Expert"
+        }
+      }
+    ],
+    "travel_preference": [
+      {
+        "_id": {
+          "$oid": "631066e061108404f9b19067"
+        },
+        "data": "Remote"
+      }
+    ],
+    "tools_used": [
+      {
+        "_id": {
+          "$oid": "631071d661108404f9b1907a"
+        },
+        "data": "Not Specified"
+      }
+    ],
+    "interview_rounds": [
+      {
+        "round_number": 1,
+        "round_name": "Technical "
+      },
+      {
+        "round_number": 2,
+        "round_name": "Technical "
+      }
+    ],
+    "communication_skill": [
+      {
+        "_id": {
+          "$oid": "63294c105165559551a5e64c"
+        },
+        "data": "good"
+      }
+    ],
+    "job_responsibility": "<!DOCTYPE html><html lang=\"en\"><head>    <meta charset=\"UTF-8\">    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">    <title>Middle/Senior NodeJS Developer Job Description</title></head><body>    <p><b>Opening role:</b> Middle/Senior NodeJS Developer</p>    <p><b>Job Description</b></p>    <p>        We are looking for a talented and experienced Node.JS developer to join our team. The        ideal candidate will have a strong understanding of SAP CAP (Or other Node.JS        Framework like Nest.JS), as well as experience working on SAP BTP Platforms. The        developer will be responsible for developing, maintaining, and deploying high-quality        web applications.    </p>    <p><b>Responsibilities:</b></p>    <ul>        <li>Develop and maintain web applications using SAP CAP on SAP BTP Platform.</li>        <li>Work with a team of developers to deliver high-quality software on time.</li>        <li>Troubleshoot and resolve application issues.</li>        <li>Work with other teams to ensure that applications meet business requirements.</li>        <li>Stay up-to-date on the latest technologies and trends</li>    </ul>    <p><b>Your Skills and Experience</b></p>    <ul>        <li>Bachelor's degree in computer science or a related field</li>        <li>3+ years of experience in web development</li>        <li>Strong understanding of JavaScript, TypeScript, and Node.JS</li>        <li>Experience with SAP CAP (Or other Node.JS Framework like Nest.JS)</li>        <li>Experience working on SAP BTP Platforms or other Cloud Platform like AWS, GCP, Microsoft Azure,...</li>        <li>Excellent problem-solving and analytical skills</li>        <li>Strong communication and teamwork skills</li>    </ul>    <p><b>Why You'll Love Working Here</b></p>    <ul>        <li>15 days of annual leaves</li>        <li>Competitive salary (+13-month salary include)</li>        <li>Health insurance, social insurance according to the government regulations</li>        <li>PVI Healthcare Insurance</li>        <li>Have a chance to work in an international, friendly, open environment</li>        <li>Annual Travel opportunity</li>    </ul></body></html>",
+    "interested_count": 0,
+    "interviewing_count": 0,
+    "hired_count": 0,
+    "rejected_count": 0,
+    "shortlisted_count": 0,
+    "is_world_wide": false,
+    "is_client_deleted": false,
+    "job_platform": "supersourcing",
+    "offer_sent_count": 0,
+    "offer_reject_count": 0,
+    "show_in_jd": false,
+    "platform_type": "pre-hire",
+    "type": "premium-job",
+    "project_status": "draft",
+    "rand_no": 93,
+    "sales_poc": [
+      {
+        "team_member_id": {
+          "$oid": "6486bd21e9fe4a48b7d81d92"
+        },
+        "first_name": "Sparsh",
+        "last_name": "Kankane",
+        "profile_pic": null,
+        "_id": {
+          "$oid": "69e76657eed97633e432d13a"
+        }
+      }
+    ],
+    "status": "assigned",
+    "mark_as_active": true,
+    "mark_as_active_date": {
+      "$date": "2026-04-21T11:58:15.064Z"
+    },
+    "is_screening_question_added": false,
+    "linkedin_job_title": "Node.js SAP CAP",
+    "project_logs": [
+      {
+        "status": "added",
+        "user_name": "aditi jain",
+        "user_id": {
+          "$oid": "68664c7f99a8089ddd13ad00"
+        },
+        "created_at": {
+          "$date": "2026-04-21T11:58:15.069Z"
+        },
+        "_id": {
+          "$oid": "69e76657eed97633e432d13b"
+        }
+      }
+    ],
+    "post_to_career_page": true,
+    "auto_lost": false,
+    "edit_logs": [],
+    "whatsapp_notification_sent": false,
+    "bgv": true,
+    "documents": [
+      {
+        "_id": {
+          "$oid": "6757f687fa677dec707c79f3"
+        },
+        "data": "Aadhar"
+      },
+      {
+        "_id": {
+          "$oid": "6757f68afa677dec707c79f5"
+        },
+        "data": "PAN"
+      }
+    ],
+    "asset_system": [
+      {
+        "_id": {
+          "$oid": "6757f667fa677dec707c79ef"
+        },
+        "data": "Self"
+      }
+    ],
+    "technical_assesment": [
+      {
+        "_id": {
+          "$oid": "675c085238f7519733015397"
+        },
+        "data": "Medium"
+      }
+    ],
+    "ist_time_zone_start_time": {
+      "_id": {
+        "$oid": "679731c05865770f73ba22eb"
+      },
+      "data": "06:00 PM"
+    },
+    "ist_time_zone_end_time": {
+      "_id": {
+        "$oid": "679731c05865770f73ba22f4"
+      },
+      "data": "03:00 AM"
+    },
+    "pf_details": [
+      {
+        "_id": {
+          "$oid": "6757f5c1fa677dec707c79e5"
+        },
+        "data": "Not Required"
+      }
+    ],
+    "sort_order": 0,
+    "sort_order_date": {
+      "$date": "2026-04-21T11:58:15.084Z"
+    },
+    "job_changes": [],
+    "engagement_type": [],
+    "working_time_zone": [],
+    "system_provided": [],
+    "department": [],
+    "experience_level": [],
+    "preffered_location": [],
+    "education_type": [],
+    "hiring_manager": [],
+    "contact_person": [],
+    "tags": [],
+    "interview_rounds_ats": [],
+    "cooling_period_department": [],
+    "cooling_period_location": [],
+    "internship_duration": [],
+    "project_duration": [],
+    "reason_for_job_close": [],
+    "reason_for_job_paused": [],
+    "talent_manager_associate": [
+      {
+        "talent_associate_id": {
+          "$oid": "643e8aad8daa812f2a1ae577"
+        },
+        "first_name": "Damini",
+        "last_name": "Jhawar",
+        "email": "damini.j@supersourcing.com",
+        "_id": {
+          "$oid": "69e7666aeed97633e432d159"
+        }
+      }
+    ],
+    "vendor_details": [],
+    "vendor_admin": [],
+    "screening_question_added_by": [],
+    "screening_question_updated_by": [],
+    "ai_interviewer": [],
+    "createdAt": {
+      "$date": "2026-04-21T11:58:15.098Z"
+    },
+    "updatedAt": {
+      "$date": "2026-04-21T11:58:34.989Z"
+    },
+    "project_id": "SIM0003026",
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "635283b7656d4b1f60cf6a9b"
+    },
+    "client_name": "paytm",
+    "company_website": "https://paytm.com/",
+    "linkedin_id": "https://www.linkedin.com/company/paytm/",
+    "industry": [
+      {
+        "_id": {
+          "$oid": "6316e0a00e767f53cabdd9bd"
+        },
+        "data": "Finance & Investment banking"
+      }
+    ],
+    "team_size": [
+      {
+        "_id": {
+          "$oid": "6316e06a0e767f53cabdd9b9"
+        },
+        "data": "200+"
+      }
+    ],
+    "recently_funded": [
+      {
+        "_id": {
+          "$oid": "6316e14e0e767f53cabdd9d9"
+        },
+        "data": "Seed Funded ( < 2M )"
+      }
+    ],
+    "company_city": "noida",
+    "company_state": "uttar pradesh",
+    "company_country": "india",
+    "location": "Noida, Uttar Pradesh, India",
+    "about_company": "<p><span style=\"background-color: rgb(255, 255, 255); color: rgba(0, 0, 0, 0.6);\">company started the digital revolution in india.</span></p><p><br></p><p><span style=\"background-color: rgb(255, 255, 255); color: rgba(0, 0, 0, 0.6);\">and we went on to become india’s leading payments app. today, more than 20 million merchants &amp; businesses are powered to accept payments digitally.</span></p><p><br></p><p><span style=\"background-color: rgb(255, 255, 255); color: rgba(0, 0, 0, 0.6);\">this is because more than 300 million indians pay at their stores. and that’s not all, app is used to pay bills, do recharges, send money to friends &amp; family, book movies &amp; travel tickets.</span></p><p><br></p><p><span style=\"background-color: rgb(255, 255, 255); color: rgba(0, 0, 0, 0.6);\">with innovations to financial services &amp; products in pipeline, this is but one of the milestones achieved towards our mission – to bring 500 million unserved and underserved indians to the mainstream economy.</span></p>",
+    "how_do_you_found_us": [
+      {
+        "_id": {
+          "$oid": "6316e2480e767f53cabdd9e3"
+        },
+        "data": "Referral"
+      }
+    ],
+    "isDelete": false,
+    "createdAt": {
+      "$date": "2022-10-21T11:34:15.780Z"
+    },
+    "updatedAt": {
+      "$date": "2023-08-18T13:30:45.177Z"
+    },
+    "__v": 0,
+    "ql_sales_associate": [
+      {
+        "sales_associate_id": {
+          "$oid": "63da64264a23e195f85d6529"
+        },
+        "first_name": "kavita",
+        "last_name": "bisht",
+        "email": "kavita.b@supersourcing.com",
+        "createdAt": {
+          "$date": "2023-07-04T14:28:56.844Z"
+        },
+        "added_by_id": "63c7f3183a3ac2508b654968",
+        "added_by_name": "super admin",
+        "added_by_role": "admin",
+        "_id": {
+          "$oid": "64a42ca88beba03405c66715"
+        }
+      }
+    ],
+    "sales_associate": [
+      {
+        "sales_associate_id": {
+          "$oid": "63cf931fc6e3ffe096ea83e0"
+        },
+        "first_name": "gajendra",
+        "last_name": "jaiswal",
+        "email": "gajendra.j@supersourcing.com",
+        "createdAt": {
+          "$date": "2023-07-04T13:32:59.148Z"
+        },
+        "added_by_id": "63c7f3183a3ac2508b654968",
+        "added_by_name": "super admin",
+        "added_by_role": "admin",
+        "_id": {
+          "$oid": "64a41f8b5ca128ebeeabc346"
+        }
+      }
+    ],
+    "skills": [],
+    "mail_communication": [],
+    "call_communication": [],
+    "pre_sales_associate_assigned_tat": 22125523460,
+    "sales_associate_assigned_tat": 0,
+    "status": "qualified-leads",
+    "status_log": [
+      {
+        "status": "marketing-qualified",
+        "added_by_id": {
+          "$oid": "63cf931fc6e3ffe096ea83e0"
+        },
+        "added_by_name": "gajendra jaiswal",
+        "added_by_role": "am_associate",
+        "_id": {
+          "$oid": "66616e5e3ccb820cb58b967e"
+        },
+        "createdAt": {
+          "$date": "2022-10-21T08:07:58.433Z"
+        }
+      },
+      {
+        "status": "sales-qualified",
+        "added_by_id": {
+          "$oid": "63cf931fc6e3ffe096ea83e0"
+        },
+        "added_by_name": "gajendra jaiswal",
+        "added_by_role": "am_associate",
+        "_id": {
+          "$oid": "6661734f2d9829471405e863"
+        },
+        "createdAt": {
+          "$date": "2022-10-21T08:29:03.568Z"
+        }
+      },
+      {
+        "status": "qualified-leads",
+        "added_by_id": {
+          "$oid": "63cf931fc6e3ffe096ea83e0"
+        },
+        "added_by_name": "gajendra jaiswal",
+        "added_by_role": "am_associate",
+        "_id": {
+          "$oid": "6661ae093ccb820cb58ba9a5"
+        },
+        "createdAt": {
+          "$date": "2022-10-21T12:39:37.309Z"
+        }
+      }
+    ]
+  }
+]
