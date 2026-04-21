@@ -8,6 +8,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 </head>
 <body>
   <div class="app-container">
@@ -46,11 +47,9 @@
     let history = [];
 
     function formatText(text) {
-      // Basic markdown: **bold** and _italic_
-      return text
-        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-        .replace(/_(.*?)_/g, '<em>$1</em>')
-        .replace(/\n/g, '<br>');
+      if (!text) return "";
+      // Configure marked for safe and clean rendering
+      return marked.parse(text);
     }
 
     function createBubble(role, content) {

@@ -144,7 +144,7 @@ You are the "Supersourcing AI Recruitment Brain". Your task is to convert recrui
 
 ### TRAINING GALLERY (FEW-SHOT EXAMPLES)
 1. User: "Node.js roles dikhao"
-   JSON: {"action": "query", "collection": "projects", "filter": {"primary_skills.skill": {"$regex": "node", "$options": "i"}}, "projection": {"client_name":1, "role":1, "project_id":1}, "limit": 10}
+   JSON: {"action": "query", "collection": "projects", "filter": {"primary_skills.skill": {"$regex": "node", "$options": "i"}}, "projection": {"client_name":1, "role":1, "project_id":1, "ss_price":1}, "limit": 10}
 
 2. User: "Top 5 clients nikaalo"
    JSON: {"action": "query", "collection": "clients", "filter": {}, "projection": {"client_name":1, "location":1}, "limit": 5}
@@ -153,7 +153,7 @@ You are the "Supersourcing AI Recruitment Brain". Your task is to convert recrui
    JSON: {"action": "count", "collection": "projects", "filter": {"createdAt": {"$gte": "${currentDate.split('T')[0]}T00:00:00Z"}}}
 
 4. User: "Jo deleted na ho?" (Contextual)
-   JSON: {"action": "query", "filter": {"is_client_deleted": false}, "limit": 10}
+   JSON: {"action": "query", "filter": {"is_client_deleted": false}, "projection": {"client_name":1, "role":1, "project_id":1, "ss_price":1}, "limit": 10}
 
 ### DEEP SCHEMA GROUNDING
 [COLLECTION: projects] -> Use for "jobs", "roles", "projects", "openings".
@@ -174,9 +174,9 @@ JSON format:
   "type": "topClientsByJobs" | null,
   "collection": "projects" | "clients",
   "filter": {},
-  "projection": {},
+  "projection": {}, // Leave empty or use {} to fetch all relevant fields
   "sort": {"createdAt": -1},
-  "limit": 10,
+  "limit": 5,
   "reply": "Used only if action is 'reply'"
 }
 
@@ -284,7 +284,7 @@ function generateDeterministicPlan(userMessage) {
         action: "query", 
         collection: "projects", 
         filter: queryFilter, 
-        projection: { client_name: 1, role: 1, project_id: 1, createdAt: 1 }, 
+        projection: { client_name: 1, role: 1, project_id: 1, createdAt: 1, ss_price: 1 }, 
         limit: 10 
       };
     }
@@ -392,7 +392,8 @@ function formatDataResponse(collection, rows) {
         const role = item.role && item.role[0] ? item.role[0].role : (item.title || "Untitled Role");
         const client = item.client_name || "Unknown Client";
         const id = item.project_id || "N/A";
-        return `${index + 1}. **${role}** at _${client}_ (ID: ${id})`;
+        const amount = item.ss_price ? ` - ₹${item.ss_price.toLocaleString()}` : "";
+        return `${index + 1}. **${role}** at _${client}_ (ID: ${id})${amount}`;
       })
       .join("\n");
   }
@@ -422,6 +423,61 @@ function formatAggregationResponse(plan, rows) {
   }
 
   return rows.map((item) => JSON.stringify(item)).join("\n");
+}
+
+async function generateFinalResponse(userQuery, rows, collection) {
+  if (!rows || !rows.length) return "Data nahi mila.";
+
+  const prompt = `
+You are the "Supersourcing AI Recruitment Assistant". 
+User asked: "${userQuery}"
+I found these results in the "${collection}" collection:
+${JSON.stringify(rows, null, 2)}
+
+Please summarize these results using the following **GOLD STANDARD** format:
+
+# 🎯 [Company Name] - Search Results
+(Friendly Hinglish greeting mentioning the number of results found)
+
+---
+
+## 📌 [Role Name] - Highlighted Position
+| Job Details | Information |
+|---|---|
+| **Role** | [Role Name] |
+| **Company** | [Company Name] |
+| **Project ID** | [ID] |
+| **Budget/Price** | [₹ Amount] |
+| **Location** | [Location or "Remote"] |
+
+---
+
+## 💡 Key Highlights:
+- **Skill Requirements**: (List 2-3 key skills)
+- **Status/Budget**: (Brief note on budget or project status)
+- **Pro Tip**: (Small advice for the recruiter)
+
+## 📢 Similar/Other Opportunities:
+(List 1-2 other relevant roles or companies found in the data)
+
+## ❓ Next Steps:
+1. (Specific follow-up question 1)
+2. (Specific follow-up question 2)
+
+### MANDATORY STYLE RULES:
+1. Use **Tables** for primary data points.
+2. Use **Horizontal Rules** (---) to separate sections.
+3. Use **Emojis** (🎯, 📌, 💡, 📢, ❓) for headers.
+4. Language: Professional **Hinglish** (Hindi/English mix).
+5. If no data found, politely say "Data nahi mila" but suggest alternatives.
+`;
+
+  try {
+    return await callClaude(prompt);
+  } catch (error) {
+    console.error("Final Response Error:", error.message);
+    return formatDataResponse(collection, rows);
+  }
 }
 
 app.post("/chat", async (req, res) => {
@@ -463,19 +519,18 @@ app.post("/chat", async (req, res) => {
       return res.json({ reply: plan.reply || "Main help karne ke liye ready hoon." });
     }
 
-    if (plan.action !== "query") {
-      return res.json({ reply: "Samajh nahi aaya, please thoda aur clear likho." });
+    if (plan.action === "query") {
+      const rows = await runSafeQuery(plan);
+      const aiResponse = await generateFinalResponse(userMessage, rows, plan.collection);
+      return res.json({ reply: aiResponse });
     }
 
-    const rows = await runSafeQuery(plan);
-    const response = formatDataResponse(plan.collection, rows);
-    return res.json({ reply: response });
+    return res.json({ reply: "Samajh nahi aaya, please thoda aur clear likho." });
   } catch (err) {
     console.error("Chat error:", err.message);
-    if (axios.isAxiosError(err)) {
+    if (err.status || err.name === "AnthropicError") {
       return res.json({
-        reply:
-          "AI service temporary issue hai. Aap jobs/clients related query pucho, main DB se direct answer de dunga."
+        reply: "AI service temporary issue hai. Aap simple queries (total jobs, list clients) pucho, main DB se direct answer de dunga."
       });
     }
     return res.status(500).json({ reply: "Server error" });
