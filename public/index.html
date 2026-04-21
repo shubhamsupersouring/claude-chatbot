@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Supersourcing Assistant</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="app-container">
+    <header class="header">
+      <div class="logo-container">
+        <img src="https://supersourcing.com/common/img/logo-dark.svg" alt="Supersourcing Logo">
+      </div>
+      <div class="status-indicator">
+        <div class="status-badge">
+          <div class="status-dot"></div>
+          <span>AI Assistant Online</span>
+        </div>
+      </div>
+    </header>
+
+    <div id="chatbox">
+      <!-- Messages will appear here -->
+    </div>
+
+    <div class="input-container">
+      <div class="input-wrapper">
+        <input type="text" id="message" placeholder="Ask about jobs, clients, or trends..." autocomplete="off" />
+        <button id="sendBtn">
+          <svg viewBox="0 0 24 24">
+            <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"></path>
+          </svg>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const chatbox = document.getElementById("chatbox");
+    const input = document.getElementById("message");
+    const sendBtn = document.getElementById("sendBtn");
+    let history = [];
+
+    function formatText(text) {
+      // Basic markdown: **bold** and _italic_
+      return text
+        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+        .replace(/_(.*?)_/g, '<em>$1</em>')
+        .replace(/\n/g, '<br>');
+    }
+
+    function createBubble(role, content) {
+      const row = document.createElement("div");
+      row.className = `msg ${role}`;
+      
+      const bubble = document.createElement("div");
+      bubble.className = "bubble";
+      bubble.innerHTML = formatText(content);
+      
+      row.appendChild(bubble);
+      return row;
+    }
+
+    function addMessage(role, text) {
+      const bubble = createBubble(role, text);
+      chatbox.appendChild(bubble);
+      scrollToBottom();
+      
+      // Update history (keep last 6 messages)
+      history.push({ role, text });
+      if (history.length > 6) history.shift();
+      
+      return bubble;
+    }
+
+    function showTyping() {
+      const row = document.createElement("div");
+      row.className = "msg bot typing-container";
+      const bubble = document.createElement("div");
+      bubble.className = "bubble typing-indicator";
+      bubble.innerHTML = `
+        <div class="typing-dot"></div>
+        <div class="typing-dot"></div>
+        <div class="typing-dot"></div>
+      `;
+      row.appendChild(bubble);
+      chatbox.appendChild(row);
+      scrollToBottom();
+      return row;
+    }
+
+    function scrollToBottom() {
+      chatbox.scrollTop = chatbox.scrollHeight;
+    }
+
+    // Initial greeting
+    setTimeout(() => {
+      addMessage("bot", "Namaste! I'm your Supersourcing assistant. How can I help you today? You can ask about available jobs or client details.");
+    }, 500);
+
+    async function sendMessage() {
+      const message = input.value.trim();
+      if (!message) return;
+
+      // Add user message
+      addMessage("user", message);
+      input.value = "";
+      sendBtn.disabled = true;
+
+      // Add typing indicator
+      const typingIndicator = showTyping();
+
+      try {
+        const res = await fetch("/chat", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({ message, history })
+        });
+
+        const data = await res.json().catch(() => ({}));
+        
+        // Remove typing indicator and add response
+        typingIndicator.remove();
+        
+        const reply = data.reply || "I encountered an unexpected response. Please try again.";
+        addMessage("bot", reply);
+
+      } catch (error) {
+        typingIndicator.remove();
+        addMessage("bot", "I'm having trouble connecting to the server. Please check your connection.");
+      } finally {
+        sendBtn.disabled = false;
+        input.focus();
+      }
+    }
+
+    sendBtn.addEventListener("click", sendMessage);
+    input.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") {
+        sendMessage();
+      }
+    });
+
+    // Auto-focus input on load
+    input.focus();
+  </script>
+</body>
+</html>
