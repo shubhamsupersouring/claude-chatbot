@@ -357,7 +357,7 @@ function generateFallbackReply(userMessage) {
 
 async function runSafeQuery(plan) {
   const collection = plan.collection;
-  const limit = Math.min(Math.max(Number(plan.limit) || 10, 1), 20);
+  const limit = Math.min(Math.max(Number(plan.limit) || 5, 1), 50);
 
   if (!allowedCollections.includes(collection)) {
     throw new Error("Invalid collection requested");
@@ -366,6 +366,8 @@ async function runSafeQuery(plan) {
   const safeFilter = sanitizeObject(plan.filter || {});
   const safeProjection = sanitizeObject(plan.projection || {});
   const safeSort = sanitizeObject(plan.sort || {});
+
+  console.log("MongoDB Query:", JSON.stringify({ collection, safeFilter, safeProjection, safeSort, limit }, null, 2));
 
   return db
     .collection(collection)
@@ -382,12 +384,13 @@ async function runCount(plan) {
     throw new Error("Invalid collection requested");
   }
   const safeFilter = sanitizeObject(plan.filter || {});
+  console.log("MongoDB Count Query:", JSON.stringify({ collection, safeFilter }, null, 2));
   return db.collection(collection).countDocuments(safeFilter);
 }
 
 async function runAggregation(plan) {
   if (plan.type === "topClientsByJobs" || plan.type === "clientsByProjectCount") {
-    const limit = Math.min(Math.max(Number(plan.limit) || 10, 1), 50);
+    const limit = Math.min(Math.max(Number(plan.limit) || 5, 1), 50);
     const minProjects = Number(plan.minProjects) || 0;
 
     const pipeline = [
@@ -415,6 +418,7 @@ async function runAggregation(plan) {
       }
     });
 
+    console.log("MongoDB Aggregation Pipeline:", JSON.stringify({ collection: "projects", pipeline }, null, 2));
     return db.collection("projects").aggregate(pipeline).toArray();
   }
 
@@ -432,6 +436,7 @@ async function runPostgresQuery(plan) {
     throw new Error("Only SELECT queries are allowed for safety");
   }
 
+  console.log("PostgreSQL Query:", sql);
   const result = await pgPool.query(sql);
   return result.rows;
 }
@@ -516,7 +521,7 @@ Format Structure:
 
 ### MANDATORY STYLE RULES:
 1. ONLY return the HTML fragment (no <html>, <head>, <body>, or <!DOCTYPE> tags).
-2. DO NOT wrap the response in markdown code blocks (like \`\`\`html).
+2. DO NOT wrap the response in markdown code blocks.
 3. DO NOT include <style> or <script> tags.
 4. NO EMOJIS in any header text.
 5. Use professional clean HTML tables for primary data.
