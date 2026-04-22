@@ -10,6 +10,7 @@
   <link rel="stylesheet" href="style.css">
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <link rel="icon" href="data:,">
 </head>
 <body>
   <div class="app-container">
@@ -17,11 +18,17 @@
       <div class="logo-container">
         <img src="https://supersourcing.com/common/img/logo-dark.svg" alt="Supersourcing Logo">
       </div>
-      <div class="status-indicator">
+      <div class="header-actions">
         <div class="status-badge">
           <div class="status-dot"></div>
           <span>AI Assistant Online</span>
         </div>
+        <button id="clearBtn" class="clear-btn" title="Clear Chat History">
+          <svg viewBox="0 0 24 24" width="18" height="18">
+            <path d="M16 9v10H8V9h8m-1.5-6h-5l-1 1H5v2h14V4h-3.5l-1-1zM18 7H6v12c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7z" fill="currentColor"></path>
+          </svg>
+          <span class="btn-text">Clear</span>
+        </button>
       </div>
     </header>
 
@@ -45,6 +52,7 @@
     const chatbox = document.getElementById("chatbox");
     const input = document.getElementById("message");
     const sendBtn = document.getElementById("sendBtn");
+    const clearBtn = document.getElementById("clearBtn");
     let history = [];
 
     function formatText(text) {
@@ -78,17 +86,68 @@
       return rendered;
     }
 
-    function createBubble(role, content) {
+    function addMessage(role, content) {
       const row = document.createElement("div");
       row.className = `msg ${role}`;
-      
       const bubble = document.createElement("div");
       bubble.className = "bubble";
       bubble.innerHTML = formatText(content);
-      
       row.appendChild(bubble);
-      return row;
+      chatbox.appendChild(row);
+      scrollToBottom();
+      
+      // Update internal history for context
+      history.push({ role, content });
+      if (history.length > 20) history.shift(); // Keep context healthy
+
+      // Persist to local storage (last 10 messages only as requested)
+      saveToStorage();
+      renderCharts(row);
     }
+
+    function saveToStorage() {
+      const messages = Array.from(chatbox.querySelectorAll('.msg:not(.typing-container)')).map(msg => {
+        return {
+          role: msg.classList.contains('user') ? 'user' : 'bot',
+          content: msg.querySelector('.bubble').innerHTML, // Keep the rendered HTML for fast load
+          isRaw: false
+        };
+      }).slice(-10); // Keep last 10
+      localStorage.setItem('chat_history', JSON.stringify(messages));
+    }
+
+    function loadFromStorage() {
+      const saved = localStorage.getItem('chat_history');
+      if (saved) {
+        const messages = JSON.parse(saved);
+        chatbox.innerHTML = '';
+        messages.forEach(msg => {
+          const row = document.createElement("div");
+          row.className = `msg ${msg.role}`;
+          const bubble = document.createElement("div");
+          bubble.className = "bubble";
+          bubble.innerHTML = msg.content;
+          row.appendChild(bubble);
+          chatbox.appendChild(row);
+
+          // Restore history array for Claude context
+          history.push({ role: msg.role, content: msg.role === 'user' ? msg.content : "(Previous response)" });
+          renderCharts(row);
+        });
+        scrollToBottom();
+        return true;
+      }
+      return false;
+    }
+
+    function clearHistory() {
+      localStorage.removeItem('chat_history');
+      chatbox.innerHTML = '';
+      history = [];
+      addMessage("bot", "History cleared. How can I help you today?");
+    }
+
+    clearBtn.addEventListener('click', clearHistory);
 
     function renderCharts(container) {
       const charts = container.querySelectorAll(".chat-chart");
@@ -130,23 +189,6 @@
       });
     }
 
-    function addMessage(role, text) {
-      const row = addMessageToDOM(role, text);
-      renderCharts(row);
-      return row;
-    }
-
-    function addMessageToDOM(role, text) {
-      const bubbleRow = createBubble(role, text);
-      chatbox.appendChild(bubbleRow);
-      scrollToBottom();
-      
-      // Update history (keep last 6 messages)
-      history.push({ role, text });
-      if (history.length > 6) history.shift();
-      
-      return bubbleRow;
-    }
 
     function showTyping() {
       const row = document.createElement("div");
@@ -168,10 +210,12 @@
       chatbox.scrollTop = chatbox.scrollHeight;
     }
 
-    // Initial greeting
-    setTimeout(() => {
-      addMessage("bot", "Namaste! I'm your Supersourcing assistant. How can I help you today? You can ask about available jobs or client details.");
-    }, 500);
+    // Restore history or show initial greeting
+    if (!loadFromStorage()) {
+      setTimeout(() => {
+        addMessage("bot", "Namaste! I'm your Supersourcing assistant. How can I help you today? You can ask about available jobs or client details.");
+      }, 500);
+    }
 
     async function sendMessage() {
       const message = input.value.trim();

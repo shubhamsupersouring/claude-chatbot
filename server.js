@@ -66,7 +66,7 @@ const chatSchema = Joi.object({
   message: Joi.string().trim().min(1).max(1000).required(),
   history: Joi.array().items(Joi.object({
     role: Joi.string().valid("user", "bot"),
-    text: Joi.string()
+    content: Joi.string().allow("")
   })).optional()
 });
 
@@ -102,6 +102,7 @@ function extractJsonObject(text) {
   }
   return trimmed;
 }
+
 
 function sanitizeObject(value) {
   if (Array.isArray(value)) {
@@ -447,10 +448,8 @@ Format Structure:
 6. <h3>Key Highlights</h3>
    (Use <ul> and <li> for requirements and pro-tips)
 7. <h3>Next Steps</h3>
-   (Create clickable action buttons using this EXACT format: 
-   <button class="suggestion-btn" data-query="FULL_USER_QUERY_TEXT">Button Label</button>
-   Example: <button class="suggestion-btn" data-query="Show me more details about Paytm jobs">More Details</button>
-   Place each button on a new line or in a <li>)
+   (Create clickable action buttons. Place each button on a new line. DO NOT use bullet points or <li> tags for these buttons.)
+   Format: <button class="suggestion-btn" data-query="FULL_USER_QUERY_TEXT">Button Label</button>
 
 ### ANALYTICS & CHARTS (NEW):
 If the data contains distributions, counts, or multiple categories (e.g., jobs per skill, status counts), include a chart using this pattern:
