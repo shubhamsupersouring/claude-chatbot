@@ -113,7 +113,7 @@ function sanitizeObject(value) {
     const result = {};
     for (const [key, nestedValue] of Object.entries(value)) {
       // Block mongo operators like $where, $expr etc.
-      const allowedOperators = ["$regex", "$options", "$gte", "$lte", "$ne", "$in", "$nin"];
+      const allowedOperators = ["$regex", "$options", "$gte", "$lte", "$gt", "$lt", "$ne", "$in", "$nin"];
       if (key.startsWith("$") && !allowedOperators.includes(key)) {
         continue;
       }
@@ -126,6 +126,11 @@ function sanitizeObject(value) {
     }
 
     return result;
+  }
+
+  if (typeof value === "string" && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/.test(value)) {
+    const date = new Date(value);
+    if (!isNaN(date.getTime())) return date;
   }
 
   return value;
@@ -141,6 +146,14 @@ function normalizeText(input) {
 
 function hasAny(text, keywords) {
   return keywords.some((word) => text.includes(word));
+}
+
+function applyDefaultFilters(collection, filter) {
+  const clientCollections = ["clients", "clientdetails", "clientpeoples", "clientsjobs", "client_poc"];
+  if (clientCollections.includes(collection)) {
+    return { ...filter, platform_type: "pre-hire" };
+  }
+  return filter;
 }
 
 async function callClaude(prompt) {
@@ -176,11 +189,12 @@ You are the "Supersourcing AI Recruitment Brain". Your task is to convert recrui
 2. If the user asks in Hindi or Hinglish, the "reply" or summary should be in **Professional Hinglish** (Hindi words in Roman script).
 3. If the user asks in English, the response should be in **English**.
 4. **FORBID** the use of Devanagari script (Hindi characters). Always use English alphabets.
+5. **PLATFORM TYPE RULE**: For any query involving clients (collections: clients, clientdetails, etc.), the filter \`platform_type: "pre-hire"\` is MANDATORY and ALWAYS active.
 
 ### LIVE SCHEMA GROUNDING (ALL 4 TABLES):
 [MONGO: projects]
-Sample: {"_id":"6357ac666dd825bee896ffc6","client_name":"somnoware","role":[{"role":"Backend Engineer"}],"primary_skills":[{"skill":".NET"}],"location":"Bangalore, Karnataka, India","project_id":"SOM0001"}
-Use for: Active jobs, skills, roles, client pricing, project status.
+Sample: {"_id":"6357ac666dd825bee896ffc6","client_name":"somnoware","role":[{"role":"Backend Engineer"}],"primary_skills":[{"skill":".NET"}],"location":"Bangalore, Karnataka, India","project_id":"SOM0001","createdAt":{"$date":"2023-10-21T11:34:15.780Z"}}
+Use for: Active jobs, skills, roles, client pricing, project status, POSTED DATE (createdAt).
 
 [MONGO: clients]
 Sample: {"client_name":"paytm","location":"Noida, Uttar Pradesh, India","industry":[{"data":"Finance"}]}
@@ -194,6 +208,11 @@ Use for: CANDIDATE STATUS, Hiring history (hired, rejected, shortlisted), candid
 Sample: {"action_by_name":"TOQEER IRSHAD","action_type":"interested","created_at":"2023-08-27"}
 Use for: Audit logs, tracking performed actions on candidates.
 
+### TIME-BASED FILTERING:
+- "Posted Date", "Created Date", "In [Year]" -> Use the "createdAt" field in "projects".
+- MongoDB handles dates via ISO strings like "2024-01-01T00:00:00Z".
+- For "In 2024": Use {"$gte": "2024-01-01T00:00:00Z", "$lt": "2025-01-01T00:00:00Z"}.
+
 ### CRITICAL ROUTING RULES:
 1. "Current Jobs", "Openings", "Active Roles" -> DB: "mongo", Collection: "projects".
 2. "Locations", "Client Names", "Company Details" -> DB: "mongo", Collection: "clients".
@@ -204,6 +223,9 @@ Use for: Audit logs, tracking performed actions on candidates.
 ### TRAINING GALLERY (FEW-SHOT):
 1. User: "Bangalore location me React developers ki demand dikhao"
    JSON: {"action": "aggregate", "db": "mongo", "collection": "projects", "filter": {"primary_skills.skill": {"$regex": "react", "$options": "i"}}, "joinClients": true, "limit": 10}
+
+2. User: "2024 me kiske paas sabse zyada jobs thi?"
+   JSON: {"action": "aggregate", "db": "mongo", "collection": "projects", "filter": {"createdAt": {"$gte": "2024-01-01T00:00:00Z", "$lt": "2025-01-01T00:00:00Z"}}, "joinClients": true, "limit": 10}
 
 2. User: "Kaunse candidates hired hue hain?"
    JSON: {"action": "query", "db": "postgres", "sql": "SELECT engineer_name, project_role, client_name, status FROM job_interactions WHERE status = 'hired' LIMIT 10"}
@@ -263,7 +285,7 @@ async function runSafeQuery(plan) {
     throw new Error("Invalid collection requested");
   }
 
-  const safeFilter = sanitizeObject(plan.filter || {});
+  const safeFilter = applyDefaultFilters(collection, sanitizeObject(plan.filter || {}));
   const safeProjection = sanitizeObject(plan.projection || {});
   const safeSort = sanitizeObject(plan.sort || {});
 
@@ -286,7 +308,7 @@ async function runCount(plan) {
   if (!allowedCollections.includes(collection)) {
     throw new Error("Invalid collection requested");
   }
-  const safeFilter = sanitizeObject(plan.filter || {});
+  const safeFilter = applyDefaultFilters(collection, sanitizeObject(plan.filter || {}));
   console.log("\x1b[35m%s\x1b[0m", "--------------------------------------------------");
   console.log("\x1b[35m%s\x1b[0m", "🟢 MONGODB COUNT QUERY");
   console.log(JSON.stringify({ collection, safeFilter }, null, 2));
@@ -299,9 +321,7 @@ async function runAggregation(plan) {
   const pipeline = [];
 
   // 1. Initial Filtering on Projects (Skills, IDs, etc.)
-  if (plan.filter && Object.keys(plan.filter).length > 0) {
-    pipeline.push({ $match: sanitizeObject(plan.filter) });
-  }
+  pipeline.push({ $match: applyDefaultFilters(plan.collection, sanitizeObject(plan.filter || {})) });
 
   // 2. Join with Clients (Mandatory for location/industry filters on projects)
   if (plan.joinClients) {
