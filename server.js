@@ -26,7 +26,7 @@ const pgPool = new Pool({
   ssl: process.env.DB_SSL === "true" ? { rejectUnauthorized: false } : false,
 });
 const claudeApiKey = (process.env.CLAUDE_API_KEY || "").trim();
-const claudeModel = process.env.CLAUDE_MODEL || "claude-3-5-haiku-20241022";
+const claudeModel = process.env.CLAUDE_MODEL || "claude-haiku-4-5";
 
 const anthropic = new Anthropic({
   apiKey: claudeApiKey,
@@ -118,6 +118,12 @@ function sanitizeObject(value) {
       }
       result[key] = sanitizeObject(nestedValue);
     }
+
+    // Automatically enforce case-insensitive regex for better user experience
+    if (result.$regex && !result.$options) {
+      result.$options = "i";
+    }
+
     return result;
   }
 
@@ -163,7 +169,12 @@ async function generatePlan(userMessage, history = []) {
   const currentDate = new Date().toISOString();
 
   const prompt = `
-You are the "Supersourcing AI Recruitment Brain". Your task is to convert recruitment queries (Hinglish/English) into precise MongoDB JSON plans or PostgreSQL SQL queries.
+You are the "Supersourcing AI Recruitment Brain". Your task is to convert recruitment queries into precise MongoDB JSON plans or PostgreSQL SQL queries. 
+### CRITICAL RULES:
+1. ALWAYS use case-insensitive regex for string searches in MongoDB. e.g., {"field": {"$regex": "val", "$options": "i"}}.
+2. If the user asks in Hindi or Hinglish, the "reply" or summary should be in **Professional Hinglish** (Hindi words in Roman script).
+3. If the user asks in English, the response should be in **English**.
+4. **FORBID** the use of Devanagari script (Hindi characters). Always use English alphabets.
 
 ### LIVE SCHEMA GROUNDING (ALL 4 TABLES):
 [MONGO: projects]
@@ -220,9 +231,19 @@ Current Date: ${currentDate}
 
   try {
     const raw = await callClaude(prompt);
-    console.log("Claude RAW Plan:", raw);
+    console.log("\x1b[33m%s\x1b[0m", "--------------------------------------------------");
+    console.log("\x1b[33m%s\x1b[0m", "🤖 CLAUDE RAW RESPONSE:");
+    console.log(raw);
+    console.log("\x1b[33m%s\x1b[0m", "--------------------------------------------------");
+    
     const parsedText = extractJsonObject(raw);
-    return JSON.parse(parsedText);
+    const plan = JSON.parse(parsedText);
+    
+    console.log("\x1b[32m%s\x1b[0m", "✅ PARSED AI PLAN:");
+    console.log(JSON.stringify(plan, null, 2));
+    console.log("\x1b[32m%s\x1b[0m", "--------------------------------------------------");
+    
+    return plan;
   } catch (error) {
     console.error("GeneratePlan Error:", error.message);
     throw error;
@@ -245,7 +266,10 @@ async function runSafeQuery(plan) {
   const safeProjection = sanitizeObject(plan.projection || {});
   const safeSort = sanitizeObject(plan.sort || {});
 
-  console.log("MongoDB Query:", JSON.stringify({ collection, safeFilter, safeProjection, safeSort, limit }, null, 2));
+  console.log("\x1b[36m%s\x1b[0m", "--------------------------------------------------");
+  console.log("\x1b[36m%s\x1b[0m", "🟢 MONGODB QUERY GENERATED");
+  console.log(JSON.stringify({ collection, safeFilter, safeProjection, safeSort, limit }, null, 2));
+  console.log("\x1b[36m%s\x1b[0m", "--------------------------------------------------");
 
   return db
     .collection(collection)
@@ -262,7 +286,10 @@ async function runCount(plan) {
     throw new Error("Invalid collection requested");
   }
   const safeFilter = sanitizeObject(plan.filter || {});
-  console.log("MongoDB Count Query:", JSON.stringify({ collection, safeFilter }, null, 2));
+  console.log("\x1b[35m%s\x1b[0m", "--------------------------------------------------");
+  console.log("\x1b[35m%s\x1b[0m", "🟢 MONGODB COUNT QUERY");
+  console.log(JSON.stringify({ collection, safeFilter }, null, 2));
+  console.log("\x1b[35m%s\x1b[0m", "--------------------------------------------------");
   return db.collection(collection).countDocuments(safeFilter);
 }
 
@@ -313,7 +340,10 @@ async function runAggregation(plan) {
       }
     });
 
-    console.log("MongoDB Aggregation Pipeline:", JSON.stringify({ collection: "projects", pipeline }, null, 2));
+    console.log("\x1b[32m%s\x1b[0m", "--------------------------------------------------");
+    console.log("\x1b[32m%s\x1b[0m", "🟢 MONGODB AGGREGATION PIPELINE");
+    console.log(JSON.stringify({ collection: "projects", pipeline }, null, 2));
+    console.log("\x1b[32m%s\x1b[0m", "--------------------------------------------------");
     return db.collection("projects").aggregate(pipeline).toArray();
   }
 
@@ -331,7 +361,10 @@ async function runPostgresQuery(plan) {
     throw new Error("Only SELECT queries are allowed for safety");
   }
 
-  console.log("PostgreSQL Query:", sql);
+  console.log("\x1b[33m%s\x1b[0m", "--------------------------------------------------");
+  console.log("\x1b[33m%s\x1b[0m", "🔵 POSTGRESQL QUERY GENERATED");
+  console.log(sql);
+  console.log("\x1b[33m%s\x1b[0m", "--------------------------------------------------");
   const result = await pgPool.query(sql);
   return result.rows;
 }
@@ -400,11 +433,13 @@ User asked: "${userQuery}"
 I found these results in the "${collection}" collection:
 ${JSON.stringify(rows, null, 2)}
 
-Please summarize these results using a PREMIUM HTML FORMAT (No Emojis in headers). Use standard HTML <table>, <tr>, <td> tags.
+Please summarize these results using a PREMIUM HTML FRAGMENT (Return ONLY the inner HTML, no <html> or <body> tags). 
+Use standard HTML <table>, <tr>, <td> tags for data. 
+IMPORTANT: DO NOT wrap the response in markdown code blocks like \`\`\`html. Return raw HTML text directly.
 
 Format Structure:
 1. <h1>[Company/Collection] Results</h1>
-2. <p>(Friendly professional greeting in Hinglish)</p>
+2. <p>(Friendly professional greeting: Use **English** if the query is in English, otherwise use **Professional Hinglish**)</p>
 3. <hr>
 4. <h2>Primary Results</h2>
    (Generate a clean HTML <table> with headers: Role, Company, Status/ID, Price, etc.)
@@ -412,7 +447,10 @@ Format Structure:
 6. <h3>Key Highlights</h3>
    (Use <ul> and <li> for requirements and pro-tips)
 7. <h3>Next Steps</h3>
-   (Numbered list for actions)
+   (Create clickable action buttons using this EXACT format: 
+   <button class="suggestion-btn" data-query="FULL_USER_QUERY_TEXT">Button Label</button>
+   Example: <button class="suggestion-btn" data-query="Show me more details about Paytm jobs">More Details</button>
+   Place each button on a new line or in a <li>)
 
 ### ANALYTICS & CHARTS (NEW):
 If the data contains distributions, counts, or multiple categories (e.g., jobs per skill, status counts), include a chart using this pattern:
@@ -421,10 +459,18 @@ If the data contains distributions, counts, or multiple categories (e.g., jobs p
 </div>
 
 ### DATA HANDLING RULE:
+- If a field is missing, null, or empty, DO NOT leave the table cell blank. Use "Not Specified" or "N/A".
+- For MongoDB "projects":
+    - **Role**: Extract from \`role[0].role\` or use \`title\`.
+    - **Skills**: Join all \`primary_skills[].skill\` into a comma-separated string.
+    - **Location**: Use the \`location\` field.
 - If processing "Aggregated Data", the records will contain 'clientName', 'totalJobs', and potentially 'location'.
 - ALWAYS create a clean table showing these fields.
-- For "projects" or "jobs", show Role, Client, and Price.
-- Always provide a brief summary in professional Hinglish.
+- FORBID the use of <!DOCTYPE>, <html>, <head>, or <body>.
+- ALWAYS match the language tone of the user's query.
+- If the query is in English, respond in English.
+- If the query is in Hindi or Hinglish, respond in **Professional Hinglish** (Roman script).
+- **CRITICAL**: Never use Devanagari script. All responses must use English alphabets.
 `;
 
   try {
@@ -488,8 +534,16 @@ app.post("/chat", async (req, res) => {
     
     let friendlyMessage = "Maaf kijiye, abhi system me thoda load hai. Kya aap query ko thoda aur simple karke puch sakte hain? Main koshish karunga ki aapka kaam ho jaye.";
     
-    if (err.name === "AnthropicError" || err.status === 429) {
-      friendlyMessage = "AI response me thodi deri ho rahi hai. Aap ek minute baad try karein ya simple counts (total jobs) pucho.";
+    if (err instanceof Anthropic.APIError || err.status === 429) {
+      if (err.status === 401) {
+        friendlyMessage = "API Key invalid hai. Please `.env` check karein.";
+      } else if (err.status === 404) {
+        friendlyMessage = `Model '${claudeModel}' nahi mila. Please support se contact karein.`;
+      } else if (err.status === 429) {
+        friendlyMessage = "AI response me thodi deri ho rahi hai (Rate Limit). Aap ek minute baad try karein.";
+      } else {
+        friendlyMessage = "AI response me thodi technical error aa rahi hai. Aap simple queries pucho.";
+      }
     } else if (err.message.includes("Mongo") || err.message.includes("Postgres")) {
       friendlyMessage = "Database se connect karne me problem aa rahi hai. Hamari team ispe kaam kar rahi hai, please thodi der baad try karein.";
     }

@@ -49,14 +49,33 @@
 
     function formatText(text) {
       if (!text) return "";
-      // Strip markdown code blocks if AI accidentally included them
-      let cleanText = text.replace(/```html\n?([\s\S]*?)\n?```/g, '$1');
-      cleanText = cleanText.replace(/```\n?([\s\S]*?)\n?```/g, '$1');
       
-      return marked.parse(cleanText, {
+      let cleanText = text || "";
+      
+      // 1. Remove markdown code blocks if the AI accidentally wraps the HTML
+      cleanText = cleanText.replace(/^```html\s*([\s\S]*?)\s*```$/gm, '$1');
+      cleanText = cleanText.replace(/^```\s*([\s\S]*?)\s*```$/gm, '$1');
+
+      // 2. Remove full HTML document boilerplate if AI provides it
+      cleanText = cleanText.replace(/<!DOCTYPE[\s\S]*?>/gi, "");
+      cleanText = cleanText.replace(/<html[\s\S]*?>/gi, "");
+      cleanText = cleanText.replace(/<\/html>/gi, "");
+      cleanText = cleanText.replace(/<head>[\s\S]*?<\/head>/gi, "");
+      cleanText = cleanText.replace(/<body[\s\S]*?>/gi, "");
+      cleanText = cleanText.replace(/<\/body>/gi, "");
+
+      let rendered = marked.parse(cleanText.trim(), {
         breaks: true,
         gfm: true
       });
+
+      // 3. Wrap tables in responsive container
+      if (/<table/i.test(rendered)) {
+        rendered = rendered.replace(/<table/g, '<div class="table-wrapper"><table');
+        rendered = rendered.replace(/<\/table>/g, '</table></div>');
+      }
+
+      return rendered;
     }
 
     function createBubble(role, content) {
@@ -196,6 +215,17 @@
     input.addEventListener("keydown", (event) => {
       if (event.key === "Enter") {
         sendMessage();
+      }
+    });
+
+    // Clickable Suggestions Handler
+    document.addEventListener("click", (event) => {
+      if (event.target.classList.contains("suggestion-btn")) {
+        const query = event.target.getAttribute("data-query");
+        if (query) {
+          input.value = query;
+          sendMessage();
+        }
       }
     });
 
