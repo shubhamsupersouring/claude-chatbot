@@ -1,5 +1,6 @@
 const express = require("express");
 const { MongoClient } = require("mongodb");
+const { Pool } = require("pg");
 const dotenv = require("dotenv");
 const cors = require("cors");
 const bodyParser = require("body-parser");
@@ -10,8 +11,20 @@ dotenv.config();
 
 const app = express();
 const port = process.env.PORT || 3000;
+
+// MongoDB Config
 const mongoUri = process.env.MONGO_URI;
 const mongoDbName = process.env.MONGO_DB_NAME || "job_management";
+
+// PostgreSQL Config
+const pgPool = new Pool({
+  host: process.env.DB_HOST,
+  database: process.env.DB_NAME,
+  user: process.env.DB_USERNAME,
+  password: process.env.DB_PASSWORD,
+  port: parseInt(process.env.DB_PORT || "5432"),
+  ssl: process.env.DB_SSL === "true" ? { rejectUnauthorized: false } : false,
+});
 const claudeApiKey = (process.env.CLAUDE_API_KEY || "").trim();
 const claudeModel = process.env.CLAUDE_MODEL || "claude-haiku-4-5-20251001";
 
@@ -65,10 +78,20 @@ async function initDB() {
     throw new Error("MONGO_URI is missing in .env");
   }
 
+  // MongoDB Connection
   client = new MongoClient(mongoUri);
   await client.connect();
   db = client.db(mongoDbName);
   console.log("MongoDB connected");
+
+  // PostgreSQL Connection Test
+  try {
+    const pgClient = await pgPool.connect();
+    console.log("PostgreSQL connected (job_interaction_prod)");
+    pgClient.release();
+  } catch (err) {
+    console.error("PostgreSQL connection error:", err.message);
+  }
 }
 
 function extractJsonObject(text) {
@@ -140,45 +163,51 @@ async function generatePlan(userMessage, history = []) {
   const currentDate = new Date().toISOString();
 
   const prompt = `
-You are the "Supersourcing AI Recruitment Brain". Your task is to convert recruitment queries (Hinglish/English) into precise MongoDB JSON plans.
+You are the "Supersourcing AI Recruitment Brain". Your task is to convert recruitment queries (Hinglish/English) into precise MongoDB JSON plans or PostgreSQL SQL queries.
 
 ### TRAINING GALLERY (FEW-SHOT EXAMPLES)
-1. User: "Node.js roles dikhao"
-   JSON: {"action": "query", "collection": "projects", "filter": {"primary_skills.skill": {"$regex": "node", "$options": "i"}}, "projection": {"client_name":1, "role":1, "project_id":1, "ss_price":1}, "limit": 10}
+1. User: "Node.js developers ki jobs dikhao"
+   JSON: {"action": "query", "db": "mongo", "collection": "projects", "filter": {"primary_skills.skill": {"$regex": "node", "$options": "i"}}, "projection": {"client_name":1, "role":1, "project_id":1, "ss_price":1}, "limit": 5}
 
-2. User: "Top 5 clients nikaalo"
-   JSON: {"action": "query", "collection": "clients", "filter": {}, "projection": {"client_name":1, "location":1}, "limit": 5}
+2. User: "Top 10 clients nikaalo"
+   JSON: {"action": "query", "db": "mongo", "collection": "clients", "filter": {}, "projection": {"client_name":1, "location":1}, "limit": 10}
 
-3. User: "Aaj kitne projects add hue?"
-   JSON: {"action": "count", "collection": "projects", "filter": {"createdAt": {"$gte": "${currentDate.split('T')[0]}T00:00:00Z"}}}
+3. User: "Kaunse candidate hired hue?"
+   JSON: {"action": "query", "db": "postgres", "sql": "SELECT * FROM job_interactions WHERE status = 'hired' LIMIT 5"}
 
-4. User: "Jo deleted na ho?" (Contextual)
-   JSON: {"action": "query", "filter": {"is_client_deleted": false}, "projection": {"client_name":1, "role":1, "project_id":1, "ss_price":1}, "limit": 10}
-
-5. User: "Clients who have more than 2 projects"
-   JSON: {"action": "aggregate", "type": "clientsByProjectCount", "minProjects": 2, "limit": 10}
+4. User: "Project ID PAY0003 ke saare actions dikhao"
+   JSON: {"action": "query", "db": "postgres", "sql": "SELECT * FROM job_actions WHERE project_id = 'PAY0003' ORDER BY created_at DESC"}
 
 ### DEEP SCHEMA GROUNDING
-[COLLECTION: projects] -> Use for "jobs", "roles", "projects", "openings".
-- Fields: project_id (ID), client_name (Company), role (Array: {role: "Title"}), primary_skills (Array: {skill: "Name"}), is_client_deleted (Bool: Deletion flag), createdAt (Date).
+**[DB: mongo]**
+- [COLLECTION: projects] -> Use for finding "active jobs", "skill-based search", "budget info". Fields: project_id, client_name, role, primary_skills, ss_price, is_client_deleted, createdAt.
+- [COLLECTION: clients] -> Use for "client details", "location search". Fields: client_name, location, industry, isDelete.
 
-[COLLECTION: clients] -> Use for "clients", "companies", "customers".
-- Fields: client_name (Name), location (City/State), industry (Array: {data: "Sector"}), isDelete (Bool: Deletion flag).
+**[DB: postgres]**
+- [TABLE: job_interactions] -> MANDATORY for "hiring status", "interaction history", "candidate status", "shortlisted candidates".
+  Columns: id, engineer_name, project_id, project_role, client_name, status, quoted_price, final_price, created_at.
+- [TABLE: job_actions] -> Use for "audit logs", "action history".
+  Columns: id, interaction_id, action_type, performer_name, project_id.
 
-### LANGUAGE MAPPING (HINGLISH)
-- "dikhao", "nikaalo", "list", "show" -> action: "query"
-- "kitne", "count", "number", "total" -> action: "count"
-- "aaj" (today) -> createdAt >= ${currentDate.split('T')[0]}
-- "deleted na ho", "active", "non-deleted" -> projects.is_client_deleted: false OR clients.isDelete: false
+### ROUTING RULE
+- If query is about "job openings" or "finding roles" -> db: "mongo".
+- If query is about "who is hired", "shortlisting status", "hiring interactions", or "candidate history" -> db: "postgres".
+
+### HTML FORMATTING RULE
+Always generate the final response using clean HTML tables for data. DO NOT use emojis in headers.
+
+### LIMIT RULE
+- DEFAULT limit is 5.
+- If the user explicitly asks for a specific count (e.g., "50 clients", "Top 10 jobs"), ALWAYS respect that count in the "limit" field or SQL LIMIT clause.
 
 JSON format:
 {
   "action": "query" | "aggregate" | "count" | "reply",
-  "type": "topClientsByJobs" | "clientsByProjectCount" | null,
-  "minProjects": number | null, // Use with aggregate action to filter by job count
+  "db": "mongo" | "postgres",
+  "sql": "SQL query string (only if db is postgres)",
   "collection": "projects" | "clients",
   "filter": {},
-  "projection": {}, // Leave empty or use {} to fetch all relevant fields
+  "projection": {},
   "sort": {"createdAt": -1},
   "limit": 5,
   "reply": "Used only if action is 'reply'"
@@ -392,9 +421,34 @@ async function runAggregation(plan) {
   throw new Error(`Unsupported aggregation plan type: ${plan.type}`);
 }
 
+async function runPostgresQuery(plan) {
+  const sql = plan.sql;
+  if (!sql) throw new Error("SQL query is missing in plan");
+
+  // Basic SQL Injection check (Claude should lead, but we sanitize)
+  const forbidden = ["DROP", "DELETE", "UPDATE", "INSERT", "TRUNCATE", "ALTER"];
+  const upperSql = sql.toUpperCase();
+  if (forbidden.some(word => upperSql.includes(word))) {
+    throw new Error("Only SELECT queries are allowed for safety");
+  }
+
+  const result = await pgPool.query(sql);
+  return result.rows;
+}
+
 function formatDataResponse(collection, rows) {
   if (!rows.length) {
     return "Data nahi mila.";
+  }
+
+  if (collection === "PostgreSQL Interactions") {
+    return rows.map((item, index) => {
+      const name = item.engineer_name || "Engineer";
+      const status = item.status || "N/A";
+      const role = item.project_role || "N/A";
+      const price = item.final_price || item.quoted_price || "N/A";
+      return `${index + 1}. **${name}** - Status: ${status} (Role: ${role}, Price: ${price})`;
+    }).join("\n");
   }
 
   if (collection === "projects" || collection === "jobs") {
@@ -446,43 +500,29 @@ User asked: "${userQuery}"
 I found these results in the "${collection}" collection:
 ${JSON.stringify(rows, null, 2)}
 
-Please summarize these results using the following CLEAN PROFESSIONAL format (No Emojis in headers):
+Please summarize these results using a PREMIUM HTML FORMAT (No Emojis in headers). Use standard HTML <table>, <tr>, <td> tags.
 
-# [Company Name] - Search Results
-(Friendly professional greeting mentioning the number of results found)
-
----
-
-## [Role Name] - Featured Position
-| Job Details | Information |
-|---|---|
-| Role | [Role Name] |
-| Company | [Company Name] |
-| Project ID | [ID] |
-| Budget/Price | [₹ Amount] |
-| Posted On | [Date] |
-| Location | [Location or "Remote"] |
-
----
-
-## Key Highlights
-- **Skill Requirements**: (List 2-3 key skills)
-- **Status/Budget**: (Brief note on budget or project status)
-- **Pro Tip**: (Strategic recruitment advice)
-
-## Similar/Other Opportunities
-(List other relevant roles or companies found in the data, including Project IDs and Prices)
-
-## Next Steps
-1. (Targeted question about candidate experience/stack)
-2. (Proposed action for applying/forwarding candidates)
+Format Structure:
+1. <h1>[Company/Collection] Results</h1>
+2. <p>(Friendly professional greeting in Hinglish)</p>
+3. <hr>
+4. <h2>Primary Results</h2>
+   (Generate a clean HTML <table> with headers: Role, Company, Status/ID, Price, etc.)
+5. <hr>
+6. <h3>Key Highlights</h3>
+   (Use <ul> and <li> for requirements and pro-tips)
+7. <h3>Next Steps</h3>
+   (Numbered list for actions)
 
 ### MANDATORY STYLE RULES:
-1. NO EMOJIS in headers (🎯, 📌, etc. are forbidden).
-2. Use professional clean Markdown tables for all primary job data.
-3. Use horizontal rules (---) between major sections.
-4. Language: Professional Hinglish (clean Hindi/English mix).
-5. If data is not found, offer a polite alternative or suggestion.
+1. ONLY return the HTML fragment (no <html>, <head>, <body>, or <!DOCTYPE> tags).
+2. DO NOT wrap the response in markdown code blocks (like \`\`\`html).
+3. DO NOT include <style> or <script> tags.
+4. NO EMOJIS in any header text.
+5. Use professional clean HTML tables for primary data.
+6. Language: Professional Hinglish.
+7. If no data results found, provide a polite explanation in HTML.
+8. Do NOT use markdown tables; use ONLY HTML tagged tables.
 `;
 
   try {
@@ -533,14 +573,19 @@ app.post("/chat", async (req, res) => {
     }
 
     if (plan.action === "query") {
-      const rows = await runSafeQuery(plan);
-      const aiResponse = await generateFinalResponse(userMessage, rows, plan.collection);
+      let rows;
+      if (plan.db === "postgres") {
+        rows = await runPostgresQuery(plan);
+      } else {
+        rows = await runSafeQuery(plan);
+      }
+      
+      const aiResponse = await generateFinalResponse(userMessage, rows, plan.db === "postgres" ? "PostgreSQL Interactions" : plan.collection);
       return res.json({ reply: aiResponse });
     }
 
     return res.json({ reply: "Samajh nahi aaya, please thoda aur clear likho." });
   } catch (err) {
-    console.error("Chat error:", err.message);
     if (err.status || err.name === "AnthropicError") {
       return res.json({
         reply: "AI service temporary issue hai. Aap simple queries (total jobs, list clients) pucho, main DB se direct answer de dunga."

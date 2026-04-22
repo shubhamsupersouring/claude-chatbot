@@ -135,6 +135,16 @@ body {
   font-size: 15px;
   position: relative;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  max-width: 100%;
+}
+
+.bubble table {
+  display: block;
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .user .bubble {
@@ -241,6 +251,63 @@ body {
   background: var(--border);
   cursor: not-allowed;
   transform: none;
+}
+
+/* Tables & Rich Content */
+.bubble h1, .bubble h2, .bubble h3 {
+  font-size: 1.1rem;
+  margin-bottom: 12px;
+  font-weight: 600;
+  color: var(--primary);
+}
+
+.bubble hr {
+  border: 0;
+  border-top: 1px solid var(--border);
+  margin: 16px 0;
+}
+
+.bubble table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 12px 0;
+  background: white;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+}
+
+.bubble th {
+  background: #f8fafc;
+  padding: 10px 12px;
+  text-align: left;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-muted);
+  border-bottom: 2px solid var(--border);
+}
+
+.bubble td {
+  padding: 10px 12px;
+  font-size: 14px;
+  border-bottom: 1px solid var(--border);
+}
+
+.bubble tr:last-child td {
+  border-bottom: none;
+}
+
+.bubble tr:hover {
+  background: #f1f5f9;
+}
+
+.bubble ul, .bubble ol {
+  margin: 12px 0;
+  padding-left: 20px;
+}
+
+.bubble li {
+  margin-bottom: 6px;
 }
 
 /* Responsive */

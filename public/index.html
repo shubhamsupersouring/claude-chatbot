@@ -48,8 +48,14 @@
 
     function formatText(text) {
       if (!text) return "";
-      // Configure marked for safe and clean rendering
-      return marked.parse(text);
+      // Strip markdown code blocks if AI accidentally included them
+      let cleanText = text.replace(/```html\n?([\s\S]*?)\n?```/g, '$1');
+      cleanText = cleanText.replace(/```\n?([\s\S]*?)\n?```/g, '$1');
+      
+      return marked.parse(cleanText, {
+        breaks: true,
+        gfm: true
+      });
     }
 
     function createBubble(role, content) {
