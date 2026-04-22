@@ -310,13 +310,102 @@ body {
   margin-bottom: 6px;
 }
 
-/* Responsive */
-@media (max-width: 640px) {
+/* Responsive Optimization */
+@media (max-width: 768px) {
+  .app-container {
+    max-width: 100%;
+    height: 100dvh;
+    border-radius: 0;
+    border: none;
+  }
+
+  body {
+    padding: 0;
+    height: 100dvh;
+  }
+
+  .header {
+    padding: 12px 16px;
+  }
+
+  .logo-container img {
+    height: 28px;
+  }
+
+  #chatbox {
+    padding: 16px;
+    gap: 12px;
+  }
+
+  .msg {
+    max-width: 92%;
+  }
+
+  .bubble {
+    padding: 10px 14px;
+    font-size: 14px;
+  }
+
+  .input-container {
+    padding: 12px 16px;
+  }
+
+  .input-wrapper {
+    padding: 6px 6px 6px 14px;
+  }
+
+  #message {
+    font-size: 16px; /* Prevents auto-zoom on iOS */
+  }
+
+  #sendBtn {
+    width: 36px;
+    height: 36px;
+  }
+}
+
+/* Tablet refinements */
+@media (min-width: 641px) and (max-width: 900px) {
+  .app-container {
+    width: 95%;
+    height: 95vh;
+  }
+}
+
+/* Landscape orientation or very small heights */
+@media (max-height: 500px) {
   .app-container {
     height: 100vh;
-    border-radius: 0;
   }
-  .msg {
-    max-width: 90%;
+  .header {
+    padding: 8px 16px;
+  }
+}
+/* Chart Optimization */
+.chart-container {
+  width: 100%;
+  max-width: 100%;
+  margin: 16px 0;
+  padding: 16px;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  border: 1px solid var(--border);
+  min-height: 250px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.chat-chart {
+  width: 100% !important;
+  height: 200px !important;
+}
+
+@media (max-width: 768px) {
+  .chart-container {
+    padding: 12px;
+    margin: 12px 0;
+    min-height: 200px;
   }
 }

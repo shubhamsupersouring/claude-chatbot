@@ -9,6 +9,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
   <div class="app-container">
@@ -70,16 +71,62 @@
       return row;
     }
 
+    function renderCharts(container) {
+      const charts = container.querySelectorAll(".chat-chart");
+      charts.forEach(canvas => {
+        try {
+          const type = canvas.getAttribute("data-type") || "bar";
+          const labels = JSON.parse(canvas.getAttribute("data-labels") || "[]");
+          const values = JSON.parse(canvas.getAttribute("data-values") || "[]");
+          const label = canvas.getAttribute("data-label") || "Count";
+          
+          new Chart(canvas, {
+            type: type,
+            data: {
+              labels: labels,
+              datasets: [{
+                label: label,
+                data: values,
+                backgroundColor: 'rgba(0, 102, 255, 0.2)',
+                borderColor: 'rgba(0, 102, 255, 1)',
+                borderWidth: 1,
+                borderRadius: 4
+              }]
+            },
+            options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              plugins: {
+                legend: { display: type === 'pie' || type === 'doughnut' }
+              },
+              scales: type === 'bar' || type === 'line' ? {
+                y: { beginAtZero: true, grid: { display: false } },
+                x: { grid: { display: false } }
+              } : {}
+            }
+          });
+        } catch (e) {
+          console.error("Chart rendering failed:", e);
+        }
+      });
+    }
+
     function addMessage(role, text) {
-      const bubble = createBubble(role, text);
-      chatbox.appendChild(bubble);
+      const row = addMessageToDOM(role, text);
+      renderCharts(row);
+      return row;
+    }
+
+    function addMessageToDOM(role, text) {
+      const bubbleRow = createBubble(role, text);
+      chatbox.appendChild(bubbleRow);
       scrollToBottom();
       
       // Update history (keep last 6 messages)
       history.push({ role, text });
       if (history.length > 6) history.shift();
       
-      return bubble;
+      return bubbleRow;
     }
 
     function showTyping() {

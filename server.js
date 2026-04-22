@@ -519,6 +519,12 @@ Format Structure:
 7. <h3>Next Steps</h3>
    (Numbered list for actions)
 
+### ANALYTICS & CHARTS (NEW):
+If the data contains distributions, counts, or multiple categories (e.g., jobs per skill, status counts), include a chart using this pattern:
+<div class="chart-container">
+  <canvas class="chat-chart" data-type="bar" data-labels='["Cat1", "Cat2"]' data-values="[10, 20]" data-label="Job Distribution"></canvas>
+</div>
+
 ### MANDATORY STYLE RULES:
 1. ONLY return the HTML fragment (no <html>, <head>, <body>, or <!DOCTYPE> tags).
 2. DO NOT wrap the response in markdown code blocks.
@@ -528,6 +534,7 @@ Format Structure:
 6. Language: Professional Hinglish.
 7. If no data results found, provide a polite explanation in HTML.
 8. Do NOT use markdown tables; use ONLY HTML tagged tables.
+9. ALWAYS ensure the labels and values in the chart match the summarized data.
 `;
 
   try {
@@ -569,8 +576,8 @@ app.post("/chat", async (req, res) => {
 
     if (plan.action === "aggregate") {
       const rows = await runAggregation(plan);
-      const response = formatAggregationResponse(plan, rows);
-      return res.json({ reply: response });
+      const aiResponse = await generateFinalResponse(userMessage, rows, "Aggregated Data");
+      return res.json({ reply: aiResponse });
     }
 
     if (plan.action === "reply") {
@@ -591,12 +598,20 @@ app.post("/chat", async (req, res) => {
 
     return res.json({ reply: "Samajh nahi aaya, please thoda aur clear likho." });
   } catch (err) {
-    if (err.status || err.name === "AnthropicError") {
-      return res.json({
-        reply: "AI service temporary issue hai. Aap simple queries (total jobs, list clients) pucho, main DB se direct answer de dunga."
-      });
+    console.error("Chat Global Error:", err.message);
+    
+    let friendlyMessage = "Maaf kijiye, abhi system me thoda load hai. Kya aap query ko thoda aur simple karke puch sakte hain? Main koshish karunga ki aapka kaam ho jaye.";
+    
+    if (err.name === "AnthropicError" || err.status === 429) {
+      friendlyMessage = "AI response me thodi deri ho rahi hai. Aap ek minute baad try karein ya simple counts (total jobs) pucho.";
+    } else if (err.message.includes("Mongo") || err.message.includes("Postgres")) {
+      friendlyMessage = "Database se connect karne me problem aa rahi hai. Hamari team ispe kaam kar rahi hai, please thodi der baad try karein.";
     }
-    return res.status(500).json({ reply: "Server error" });
+    
+    // NEVER RETURN 500 TO USER
+    return res.json({ 
+      reply: `<h1>System Update</h1><p>${friendlyMessage}</p>` 
+    });
   }
 });
 
