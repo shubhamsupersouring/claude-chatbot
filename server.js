@@ -26,7 +26,7 @@ const pgPool = new Pool({
   ssl: process.env.DB_SSL === "true" ? { rejectUnauthorized: false } : false,
 });
 const claudeApiKey = (process.env.CLAUDE_API_KEY || "").trim();
-const claudeModel = process.env.CLAUDE_MODEL || "claude-haiku-4-5-20251001";
+const claudeModel = process.env.CLAUDE_MODEL || "claude-3-5-haiku-20241022";
 
 const anthropic = new Anthropic({
   apiKey: claudeApiKey,
@@ -165,195 +165,73 @@ async function generatePlan(userMessage, history = []) {
   const prompt = `
 You are the "Supersourcing AI Recruitment Brain". Your task is to convert recruitment queries (Hinglish/English) into precise MongoDB JSON plans or PostgreSQL SQL queries.
 
-### TRAINING GALLERY (FEW-SHOT EXAMPLES)
-1. User: "Node.js developers ki jobs dikhao"
-   JSON: {"action": "query", "db": "mongo", "collection": "projects", "filter": {"primary_skills.skill": {"$regex": "node", "$options": "i"}}, "projection": {"client_name":1, "role":1, "project_id":1, "ss_price":1}, "limit": 5}
+### LIVE SCHEMA GROUNDING (ALL 4 TABLES):
+[MONGO: projects]
+Sample: {"_id":"6357ac666dd825bee896ffc6","client_name":"somnoware","role":[{"role":"Backend Engineer"}],"primary_skills":[{"skill":".NET"}],"location":"Bangalore, Karnataka, India","project_id":"SOM0001"}
+Use for: Active jobs, skills, roles, client pricing, project status.
 
-2. User: "Top 10 clients nikaalo"
-   JSON: {"action": "query", "db": "mongo", "collection": "clients", "filter": {}, "projection": {"client_name":1, "location":1}, "limit": 10}
+[MONGO: clients]
+Sample: {"client_name":"paytm","location":"Noida, Uttar Pradesh, India","industry":[{"data":"Finance"}]}
+Use for: Company details, location-based company search.
 
-3. User: "Kaunse candidate hired hue?"
-   JSON: {"action": "query", "db": "postgres", "sql": "SELECT * FROM job_interactions WHERE status = 'hired' LIMIT 5"}
+[POSTGRES: job_interactions]
+Sample: {"engineer_name":"divyang dave","project_role":"Backend Engineer","status":"rejected","quoted_price":"70000","job_primary_skills":[{"skill":"Python"}],"created_at":"2023-09-21"}
+Use for: CANDIDATE STATUS, Hiring history (hired, rejected, shortlisted), candidate status logs.
 
-4. User: "Project ID PAY0003 ke saare actions dikhao"
-   JSON: {"action": "query", "db": "postgres", "sql": "SELECT * FROM job_actions WHERE project_id = 'PAY0003' ORDER BY created_at DESC"}
+[POSTGRES: job_actions]
+Sample: {"action_by_name":"TOQEER IRSHAD","action_type":"interested","created_at":"2023-08-27"}
+Use for: Audit logs, tracking performed actions on candidates.
 
-### DEEP SCHEMA GROUNDING
-**[DB: mongo]**
-- [COLLECTION: projects] -> Use for finding "active jobs", "skill-based search", "budget info". Fields: project_id, client_name, role, primary_skills, ss_price, is_client_deleted, createdAt.
-- [COLLECTION: clients] -> Use for "client details", "location search". Fields: client_name, location, industry, isDelete.
+### CRITICAL ROUTING RULES:
+1. "Current Jobs", "Openings", "Active Roles" -> DB: "mongo", Collection: "projects".
+2. "Locations", "Client Names", "Company Details" -> DB: "mongo", Collection: "clients".
+3. "Who is hired", "Shortlisted count", "Candidate Status", "Historian Data" -> DB: "postgres", Table: "job_interactions".
+4. "Audit logs", "Performed actions", "Logs" -> DB: "postgres", Table: "job_actions".
+5. To find JOBS/DEMAND in a specific LOCATION (e.g., 'React in Noida') -> Use 'action': 'aggregate', 'db': 'mongo', 'collection': 'projects', and set 'joinClients': true.
 
-**[DB: postgres]**
-- [TABLE: job_interactions] -> MANDATORY for "hiring status", "interaction history", "candidate status", "shortlisted candidates".
-  Columns: id, engineer_name, project_id, project_role, client_name, status, quoted_price, final_price, created_at.
-- [TABLE: job_actions] -> Use for "audit logs", "action history".
-  Columns: id, interaction_id, action_type, performer_name, project_id.
+### TRAINING GALLERY (FEW-SHOT):
+1. User: "Bangalore location me React developers ki demand dikhao"
+   JSON: {"action": "aggregate", "db": "mongo", "collection": "projects", "filter": {"primary_skills.skill": {"$regex": "react", "$options": "i"}}, "joinClients": true, "limit": 10}
 
-### ROUTING RULE
-- If query is about "job openings" or "finding roles" -> db: "mongo".
-- If query is about "who is hired", "shortlisting status", "hiring interactions", or "candidate history" -> db: "postgres".
+2. User: "Kaunse candidates hired hue hain?"
+   JSON: {"action": "query", "db": "postgres", "sql": "SELECT engineer_name, project_role, client_name, status FROM job_interactions WHERE status = 'hired' LIMIT 10"}
 
-### HTML FORMATTING RULE
-Always generate the final response using clean HTML tables for data. DO NOT use emojis in headers.
-
-### LIMIT RULE
-- DEFAULT limit is 5.
-- If the user explicitly asks for a specific count (e.g., "50 clients", "Top 10 jobs"), ALWAYS respect that count in the "limit" field or SQL LIMIT clause.
+3. User: "Hi"
+   JSON: {"action": "reply", "reply": "Namaste! Main Supersourcing assistant hoon. Aap mujhse jobs, hiring status, ya client details ke baare me kuch bhi puch sakte hain."}
 
 JSON format:
 {
   "action": "query" | "aggregate" | "count" | "reply",
   "db": "mongo" | "postgres",
-  "sql": "SQL query string (only if db is postgres)",
+  "sql": "SQL string (only for postgres)",
   "collection": "projects" | "clients",
-  "filter": {},
+  "filter": {}, 
   "projection": {},
-  "sort": {"createdAt": -1},
   "limit": 5,
-  "reply": "Used only if action is 'reply'"
+  "joinClients": true | false,
+  "reply": "Used for action: 'reply'"
 }
 
-Previous Conversation:
-${historyText}
-
-Current Date Context: ${currentDate}
 User Request: "${userMessage}"
+Previous Context:
+${historyText}
+Current Date: ${currentDate}
 `;
 
   try {
     const raw = await callClaude(prompt);
-    console.log("Claude RAW Response:", raw);
+    console.log("Claude RAW Plan:", raw);
     const parsedText = extractJsonObject(raw);
-    console.log("Extracted JSON:", parsedText);
     return JSON.parse(parsedText);
   } catch (error) {
     console.error("GeneratePlan Error:", error.message);
-    
-    // --- Smart Fallback for Recruitment Queries (Claude Alternative) ---
-    const text = normalizeText(userMessage);
-    const asksJobs = hasAny(text, ["job", "jobs", "role", "role", "project", "projects", "opening"]);
-    const asksClients = hasAny(text, ["client", "clients", "company", "companies"]);
-    const asksCount = hasAny(text, ["kitne", "count", "total", "number"]);
-    
-    if (asksJobs || asksClients) {
-      const plan = {
-        action: asksCount ? "count" : "query",
-        collection: asksJobs ? "projects" : "clients",
-        filter: {},
-        projection: asksJobs ? { client_name: 1, role: 1, project_id: 1 } : { client_name: 1, name: 1, location: 1 },
-        limit: 10
-      };
-
-      // Handle Skill filters
-      if (text.includes("node")) plan.filter = { "primary_skills.skill": { "$regex": "node", "$options": "i" } };
-      if (text.includes("react")) plan.filter = { "primary_skills.skill": { "$regex": "react", "$options": "i" } };
-      
-      // Handle Deletion filters
-      if (text.includes("deleted na ہو") || text.includes("non deleted") || text.includes("not deleted") || text.includes("undeleted")) {
-        if (asksJobs) plan.filter.is_client_deleted = false;
-        if (asksClients) plan.filter.isDelete = false;
-      }
-
-      console.log("Using Smart Fallback Plan:", JSON.stringify(plan));
-      return plan;
-    }
-    
-    return null;
+    throw error;
   }
 }
 
-function generateDeterministicPlan(userMessage) {
-  const text = normalizeText(userMessage);
+// AI-First Architecture: Deterministic logic and hardcoded fallbacks removed.
 
-  const asksCount = hasAny(text, ["kitne", "count", "total", "how many", "kitna", "number of"]);
-  const asksClients = hasAny(text, ["client", "clients", "customer", "customers", "company"]);
-  const asksJobs = hasAny(text, ["job", "jobs", "opening", "openings", "vacancy", "vacancies", "project", "projects"]);
-  const asksList = hasAny(text, ["list", "dikhao", "dekho", "show", "batao", "nikaalo", "display", "kaunse", "kisne", "kaun"]);
-  const asksToday = hasAny(text, ["today", "aaj", "abhee", "now", "recent", "latest"]);
-  const asksNonDeleted = hasAny(text, ["non deleted", "active", "not deleted", "undeleted", "saaf", "bin deleted"]);
-  const asksTop = hasAny(text, ["top", "sabse", "ranking", "best"]);
-
-  // Build filter
-  const filter = {};
-  if (asksToday) {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    filter.createdAt = { "$gte": today };
-  }
-  if (asksNonDeleted) {
-    // For clients it's isDelete: false, for projects it's project_status !== 'deleted'
-    // This is a bit ambiguous in deterministic, so we check collection context later
-  }
-
-  // Handle Aggregation: "top 5 clients by jobs"
-  if (asksTop && asksClients && (asksJobs || text.includes("job"))) {
-    const limitMatch = text.match(/\d+/);
-    return {
-      action: "aggregate",
-      type: "topClientsByJobs",
-      limit: limitMatch ? parseInt(limitMatch[0]) : 5
-    };
-  }
-
-  // Handle Counts
-  if (asksCount) {
-    const countFilter = { ...filter };
-    if (asksClients) {
-      if (asksNonDeleted) countFilter.isDelete = false;
-      return { action: "count", collection: "clients", filter: countFilter };
-    }
-    if (asksJobs) {
-      if (asksNonDeleted) countFilter.is_client_deleted = false;
-      return { action: "count", collection: "projects", filter: countFilter };
-    }
-  }
-
-  // Handle Lists/Queries
-  if (asksList || asksToday || asksNonDeleted) {
-    if (asksJobs || (asksClients && asksToday)) { 
-      const queryFilter = { ...filter };
-      if (asksNonDeleted) queryFilter.is_client_deleted = false;
-      return { 
-        action: "query", 
-        collection: "projects", 
-        filter: queryFilter, 
-        projection: { client_name: 1, role: 1, project_id: 1, createdAt: 1, ss_price: 1 }, 
-        limit: 10 
-      };
-    }
-    if (asksClients) {
-      const queryFilter = { ...filter };
-      if (asksNonDeleted) queryFilter.isDelete = false;
-      return { 
-        action: "query", 
-        collection: "clients", 
-        filter: queryFilter, 
-        projection: { client_name: 1, name: 1, location: 1 }, 
-        limit: 10 
-      };
-    }
-  }
-
-  return null;
-}
-
-function generateFallbackReply(userMessage) {
-  const text = normalizeText(userMessage);
-
-  if (hasAny(text, ["hello", "hi", "hey", "namaste", "salam"])) {
-    return "Namaste! Aap Hindi ya English me kuch bhi puch sakte ho - jobs, clients, count, top results, sab handle kar lunga.";
-  }
-
-  if (hasAny(text, ["help", "kya kar sakte", "what can you do", "kaise use"])) {
-    return "Main Hinglish me queries samajh sakta hoon. Example: 'clients kitne hai', 'latest jobs dikhao', 'top 5 clients by jobs'.";
-  }
-
-  if (hasAny(text, ["thanks", "thank you", "shukriya"])) {
-    return "Always welcome! Aur koi query ho to pucho.";
-  }
-
-  return "Main samajhne ki koshish kar raha hoon. Aap thoda detail me pucho, jaise: 'last 10 jobs dikhao' ya 'top 5 clients by jobs'.";
-}
+// Legacy functions generateDeterministicPlan and generateFallbackReply have been removed.
 
 async function runSafeQuery(plan) {
   const collection = plan.collection;
@@ -389,32 +267,49 @@ async function runCount(plan) {
 }
 
 async function runAggregation(plan) {
-  if (plan.type === "topClientsByJobs" || plan.type === "clientsByProjectCount") {
-    const limit = Math.min(Math.max(Number(plan.limit) || 5, 1), 50);
-    const minProjects = Number(plan.minProjects) || 0;
+  const limit = Math.min(Math.max(Number(plan.limit) || 5, 1), 50);
+  const pipeline = [];
 
-    const pipeline = [
-      {
-        $group: {
-          _id: "$client_id",
-          totalJobs: { $sum: 1 },
-          clientName: { $first: "$client_name" }
-        }
+  // 1. Initial Filtering on Projects (Skills, IDs, etc.)
+  if (plan.filter && Object.keys(plan.filter).length > 0) {
+    pipeline.push({ $match: sanitizeObject(plan.filter) });
+  }
+
+  // 2. Join with Clients (Mandatory for location/industry filters on projects)
+  if (plan.joinClients) {
+    pipeline.push({
+      $lookup: {
+        from: "clients",
+        localField: "client_id",
+        foreignField: "_id",
+        as: "client_details"
       }
-    ];
+    });
+    pipeline.push({ $unwind: "$client_details" });
 
-    // Add filter for minimum projects if requested
-    if (minProjects > 0) {
-      pipeline.push({ $match: { totalJobs: { $gt: minProjects } } });
-    }
+    // Handle nested filters if AI provided them (e.g., client location)
+    // Note: If the AI puts location in top level filter, we might need to handle it or instruct it to use client_details prefix.
+  }
 
+  // 3. Define the aggregation type
+  if (plan.type === "topClientsByJobs" || plan.action === "aggregate") {
+    pipeline.push({
+      $group: {
+        _id: "$client_id",
+        totalJobs: { $sum: 1 },
+        clientName: { $first: plan.joinClients ? "$client_details.client_name" : "$client_name" },
+        location: { $first: plan.joinClients ? "$client_details.location" : null }
+      }
+    });
     pipeline.push({ $sort: { totalJobs: -1 } });
     pipeline.push({ $limit: limit });
     pipeline.push({
       $project: {
+        _id: 0,
         clientId: "$_id",
         totalJobs: 1,
-        clientName: { $ifNull: ["$clientName", "Unknown Client"] }
+        clientName: { $ifNull: ["$clientName", "Unknown Client"] },
+        location: 1
       }
     });
 
@@ -422,7 +317,7 @@ async function runAggregation(plan) {
     return db.collection("projects").aggregate(pipeline).toArray();
   }
 
-  throw new Error(`Unsupported aggregation plan type: ${plan.type}`);
+  throw new Error(`Unsupported aggregation plan.`);
 }
 
 async function runPostgresQuery(plan) {
@@ -483,17 +378,17 @@ function formatDataResponse(collection, rows) {
 
 function formatAggregationResponse(plan, rows) {
   if (!rows.length) {
-    return "Mausam toh accha hai, par is criteria ke liye koi clients nahi mile.";
+    return "Mausam toh accha hai, par is criteria ke liye koi matching records nahi mile.";
   }
 
-  if (plan.type === "topClientsByJobs" || plan.type === "clientsByProjectCount") {
-    const minStr = plan.minProjects ? ` (more than ${plan.minProjects} projects)` : "";
-    return `**Found ${rows.length} Clients${minStr}:**\n` + rows
-      .map((item, index) => `${index + 1}. **${item.clientName}** -> ${item.totalJobs} jobs`)
-      .join("\n");
-  }
-
-  return rows.map((item) => JSON.stringify(item)).join("\n");
+  return `### Aggregation Results\n` + rows
+    .map((item, index) => {
+      const name = item.clientName || "Unknown Client";
+      const total = item.totalJobs || 0;
+      const loc = item.location ? ` (${item.location})` : "";
+      return `${index + 1}. **${name}**${loc} -> ${total} matching assignments found.`;
+    })
+    .join("\n");
 }
 
 async function generateFinalResponse(userQuery, rows, collection) {
@@ -525,16 +420,11 @@ If the data contains distributions, counts, or multiple categories (e.g., jobs p
   <canvas class="chat-chart" data-type="bar" data-labels='["Cat1", "Cat2"]' data-values="[10, 20]" data-label="Job Distribution"></canvas>
 </div>
 
-### MANDATORY STYLE RULES:
-1. ONLY return the HTML fragment (no <html>, <head>, <body>, or <!DOCTYPE> tags).
-2. DO NOT wrap the response in markdown code blocks.
-3. DO NOT include <style> or <script> tags.
-4. NO EMOJIS in any header text.
-5. Use professional clean HTML tables for primary data.
-6. Language: Professional Hinglish.
-7. If no data results found, provide a polite explanation in HTML.
-8. Do NOT use markdown tables; use ONLY HTML tagged tables.
-9. ALWAYS ensure the labels and values in the chart match the summarized data.
+### DATA HANDLING RULE:
+- If processing "Aggregated Data", the records will contain 'clientName', 'totalJobs', and potentially 'location'.
+- ALWAYS create a clean table showing these fields.
+- For "projects" or "jobs", show Role, Client, and Price.
+- Always provide a brief summary in professional Hinglish.
 `;
 
   try {
@@ -555,14 +445,10 @@ app.post("/chat", async (req, res) => {
   const history = value.history || [];
 
   try {
-    let plan = generateDeterministicPlan(userMessage);
+    const plan = await generatePlan(userMessage, history);
 
     if (!plan) {
-      plan = await generatePlan(userMessage, history);
-    }
-
-    if (!plan) {
-      return res.json({ reply: generateFallbackReply(userMessage) });
+      return res.json({ reply: "Maaf kijiye, main ye query samajh nahi pa raha hoon. Kya aap thoda detail me bata sakte hain?" });
     }
 
     if (plan.action === "count") {
